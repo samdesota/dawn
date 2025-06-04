@@ -1,0 +1,36 @@
+.drumPadContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 20px;
+}
+
+.drumPadGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1/1;
+}
+
+.pad {
+  background-color: #3a3a3a;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+  aspect-ratio: 1/1;
+}
+
+.pad:hover {
+  background-color: #4a4a4a;
+}
+
+.pad:active {
+  background-color: #5a5a5a;
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
