@@ -72,7 +72,13 @@ const App: Component = () => {
     };
 
     const preventContextMenu = (e: Event) => {
-      e.preventDefault();
+      // Only prevent context menu on keyboard and control elements
+      const target = e.target as HTMLElement;
+      if (target.closest('.keyboard-container') ||
+          target.closest('.key-button') ||
+          target.closest('.transport-controls')) {
+        e.preventDefault();
+      }
     };
 
     document.addEventListener('touchstart', preventTouchDefaults, { passive: false });
@@ -158,7 +164,7 @@ const App: Component = () => {
           <TransportControls />
 
           {/* Quick Settings */}
-          <div class="quick-settings bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
+          <div class="quick-settings bg-gray-700 p-4 rounded-lg shadow">
             <h3 class="text-lg font-semibold mb-3">Quick Settings</h3>
 
             <div class="setting-item mb-3">

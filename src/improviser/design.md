@@ -154,3 +154,9 @@ Build this as a single-page application that works offline once loaded, with all
 
 ## Getting Started
 Begin building this application in the `src/improviser` directory. Create the component and state architecture as outlined above, starting with the core state classes and then building the UI components that consume them.
+
+---
+
+Iterations
+
+-

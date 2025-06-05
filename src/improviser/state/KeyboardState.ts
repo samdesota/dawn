@@ -14,7 +14,7 @@ export interface KeyInfo extends NoteInfo {
 export class KeyboardState {
   // Reactive state atoms
   public octaveRange = createAtom([3, 5] as [number, number]); // Start with 3 octaves
-  public keyWidth = createAtom(60); // Base key width in pixels
+  public keyWidth = createAtom(150); // Base key width in pixels
   public keyboardKeys = createAtom<KeyInfo[]>([]);
 
   // Note names including enharmonic equivalents
@@ -89,13 +89,13 @@ export class KeyboardState {
 
     switch (noteType) {
       case 'triad':
-        return { width: baseWidth * 1.2, height: baseHeight }; // 100% height, thickest
+        return { width: baseWidth, height: baseHeight }; // Full height, base layer
       case 'pentatonic':
-        return { width: baseWidth * 1.0, height: baseHeight * 0.8 }; // 80% height
+        return { width: baseWidth * 0.8, height: baseHeight * 0.75 }; // 75% height, narrower
       case 'scale':
-        return { width: baseWidth * 0.8, height: baseHeight * 0.6 }; // 60% height
+        return { width: baseWidth * 0.7, height: baseHeight * 0.6 }; // 60% height, narrower
       case 'chromatic':
-        return { width: baseWidth * 0.6, height: baseHeight * 0.4 }; // 40% height
+        return { width: baseWidth * 0.6, height: baseHeight * 0.45 }; // 45% height, narrowest
       default:
         return { width: baseWidth, height: baseHeight };
     }
@@ -124,71 +124,86 @@ export class KeyboardState {
   }
 
   private layoutOctave(octaveKeys: KeyInfo[], startPosition: number): number {
-    // Sort keys by hierarchy: triads first, then pentatonic, scale, chromatic
-    const hierarchyOrder = { triad: 0, pentatonic: 1, scale: 2, chromatic: 3 };
-    const sortedKeys = [...octaveKeys].sort((a, b) => {
-      const aOrder = hierarchyOrder[a.noteType];
-      const bOrder = hierarchyOrder[b.noteType];
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      // Within same hierarchy, sort by chromatic order
-      return this.chromaticNotes.indexOf(a.note) - this.chromaticNotes.indexOf(b.note);
-    });
+    // Sort keys by chromatic order for consistent positioning
+    const sortedKeys = [...octaveKeys].sort((a, b) =>
+      this.chromaticNotes.indexOf(a.note) - this.chromaticNotes.indexOf(b.note)
+    );
 
+    // Phase 1: Place triad notes as the base layer
+    const triadKeys = sortedKeys.filter(k => k.noteType === 'triad');
     let currentPos = startPosition;
 
-    // Phase 1: Place triad notes at primary positions
-    const triadKeys = sortedKeys.filter(k => k.noteType === 'triad');
     triadKeys.forEach(key => {
       key.position = currentPos;
-      currentPos += key.width + 2; // Small gap between keys
+      currentPos += key.width + 4; // Small gap between triad keys
     });
 
-    // Phase 2: Insert pentatonic notes between triads where they don't overlap
-    const pentatonicKeys = sortedKeys.filter(k => k.noteType === 'pentatonic');
-    pentatonicKeys.forEach(key => {
-      key.position = this.findBestPosition(key, triadKeys);
-    });
+    // Phase 2: Position non-triad keys between triad keys, overlapping and centered
+    const nonTriadKeys = sortedKeys.filter(k => k.noteType !== 'triad');
 
-    // Phase 3: Fill remaining diatonic scale notes
-    const scaleKeys = sortedKeys.filter(k => k.noteType === 'scale');
-    const placedKeys = [...triadKeys, ...pentatonicKeys];
-    scaleKeys.forEach(key => {
-      key.position = this.findBestPosition(key, placedKeys);
-    });
-
-    // Phase 4: Add chromatic notes in remaining spaces
-    const chromaticKeys = sortedKeys.filter(k => k.noteType === 'chromatic');
-    const allPlacedKeys = [...triadKeys, ...pentatonicKeys, ...scaleKeys];
-    chromaticKeys.forEach(key => {
-      key.position = this.findBestPosition(key, allPlacedKeys);
+    nonTriadKeys.forEach(key => {
+      key.position = this.findCenteredPosition(key, triadKeys, sortedKeys);
     });
 
     // Return the end position of this octave
-    const maxPosition = Math.max(...octaveKeys.map(k => k.position + k.width));
-    return maxPosition + 10; // Gap between octaves
+    const maxTriadPosition = triadKeys.length > 0
+      ? Math.max(...triadKeys.map(k => k.position + k.width))
+      : startPosition;
+    return maxTriadPosition + 10; // Gap between octaves
   }
 
-  private findBestPosition(key: KeyInfo, existingKeys: KeyInfo[]): number {
-    if (existingKeys.length === 0) return 0;
+  private findCenteredPosition(key: KeyInfo, triadKeys: KeyInfo[], allKeys: KeyInfo[]): number {
+    if (triadKeys.length === 0) return 0;
 
-    // Sort existing keys by position
-    const sortedExisting = [...existingKeys].sort((a, b) => a.position - b.position);
+    // Find the chromatic position of this key
+    const keyIndex = this.chromaticNotes.indexOf(key.note);
 
-    // Try to find a space between existing keys
-    for (let i = 0; i < sortedExisting.length - 1; i++) {
-      const current = sortedExisting[i];
-      const next = sortedExisting[i + 1];
-      const spaceStart = current.position + current.width + 2;
-      const spaceEnd = next.position - 2;
+    // Find the triad keys that this key should be positioned between
+    const triadIndices = triadKeys.map(tk => ({
+      key: tk,
+      index: this.chromaticNotes.indexOf(tk.note)
+    })).sort((a, b) => a.index - b.index);
 
-      if (spaceEnd - spaceStart >= key.width) {
-        return spaceStart;
+    // Find the appropriate triad keys to center between
+    let leftTriad: KeyInfo | null = null;
+    let rightTriad: KeyInfo | null = null;
+
+    for (let i = 0; i < triadIndices.length - 1; i++) {
+      const current = triadIndices[i];
+      const next = triadIndices[i + 1];
+
+      if (keyIndex > current.index && keyIndex < next.index) {
+        leftTriad = current.key;
+        rightTriad = next.key;
+        break;
       }
     }
 
-    // If no space found, place at the end
-    const lastKey = sortedExisting[sortedExisting.length - 1];
-    return lastKey.position + lastKey.width + 2;
+    // Handle edge cases
+    if (!leftTriad && !rightTriad) {
+      // Key is outside the range of triad keys
+      if (keyIndex < triadIndices[0].index) {
+        // Before first triad - position to the left
+        const firstTriad = triadIndices[0].key;
+        return firstTriad.position - key.width - 2;
+      } else {
+        // After last triad - position to the right
+        const lastTriad = triadIndices[triadIndices.length - 1].key;
+        return lastTriad.position + lastTriad.width + 2;
+      }
+    }
+
+    if (leftTriad && rightTriad) {
+      // Center between two triad keys
+      const leftEnd = leftTriad.position + leftTriad.width;
+      const rightStart = rightTriad.position;
+      const centerPoint = (leftEnd + rightStart) / 2;
+      return centerPoint - (key.width / 2);
+    }
+
+    // Fallback: position at the end
+    const lastTriad = triadKeys[triadKeys.length - 1];
+    return lastTriad.position + lastTriad.width + 2;
   }
 
   public updateHighlighting() {

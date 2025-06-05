@@ -130,14 +130,8 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
       data-octave={props.key.octave}
     >
       <div class="key-content h-full flex flex-col justify-between items-center p-1 text-xs font-medium">
-        <div class="note-name text-center">
+        <div class="octave-number text-center opacity-50 text-xs mt-auto">
           {getDisplayNoteName()}
-        </div>
-        <div class="chord-role text-center font-bold">
-          {getChordRoleDisplay()}
-        </div>
-        <div class="octave-number text-center opacity-50 text-xs">
-          {props.key.octave}
         </div>
       </div>
     </button>

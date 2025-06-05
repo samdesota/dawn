@@ -6,6 +6,7 @@ import { KeyButton } from './KeyButton';
 
 export const KeyboardLayout: Component = () => {
   let keyboardContainer: HTMLDivElement | undefined;
+  let emergencyStopTimeout: number | undefined;
 
   onMount(() => {
     // Set up keyboard container for touch handling
@@ -15,11 +16,55 @@ export const KeyboardLayout: Component = () => {
       keyboardContainer.addEventListener('touchend', handleTouchEnd, { passive: false });
       keyboardContainer.addEventListener('touchcancel', handleTouchCancel, { passive: false });
     }
+
+    // Add emergency stop on window blur/focus loss
+    const handleWindowBlur = () => {
+      console.log('Window blur detected, stopping all notes');
+      audioEngineState.stopAllNotes();
+      uiState.clearAllTouches();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Page hidden, stopping all notes');
+        audioEngineState.stopAllNotes();
+        uiState.clearAllTouches();
+      }
+    };
+
+    // Add global escape key handler for emergency stop
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        console.log('Escape key pressed, emergency stopping all notes');
+        audioEngineState.emergencyStopAll();
+        uiState.clearAllTouches();
+        if (emergencyStopTimeout) {
+          clearTimeout(emergencyStopTimeout);
+          emergencyStopTimeout = undefined;
+        }
+      }
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('keydown', handleKeyDown);
+      if (emergencyStopTimeout) {
+        clearTimeout(emergencyStopTimeout);
+      }
+    };
   });
 
   const handleTouchStart = (event: TouchEvent) => {
     event.preventDefault();
-    audioEngineState.resumeContext(); // Ensure audio context is active on touch
+
+    // Resume audio context on first touch (required for iOS)
+    audioEngineState.resumeContext();
 
     for (let i = 0; i < event.changedTouches.length; i++) {
       const touch = event.changedTouches[i];
@@ -29,14 +74,31 @@ export const KeyboardLayout: Component = () => {
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
 
-      // Find which key was touched
-      const key = keyboardState.getKeyAtPosition(x);
+      // Find the key at this position
+      const targetElement = event.target as HTMLElement;
+
+      // find the element with data-note and data-octave by traversing the DOM
+      let currentElement = targetElement;
+      while (currentElement && !currentElement.dataset.note) {
+        currentElement = currentElement.parentElement;
+      }
+
+      if (!currentElement) {
+        console.error('No key found at position', x, y);
+        return;
+      }
+
+      const note = currentElement.dataset.note;
+      const octave = currentElement.dataset.octave;
+
+      const key = keyboardState.findKeyByNote(note, parseInt(octave));
+
       if (key) {
-        // Calculate velocity based on touch pressure or use default
+        // Calculate velocity from touch force (if available) or default
         const velocity = (touch as any).force || 1.0;
         const adjustedVelocity = velocity * uiState.touchSensitivityMultiplier;
 
-        // Add touch tracking
+        // Track the touch
         uiState.addTouch(touch.identifier, x, y, `${key.note}${key.octave}`);
 
         // Play the note
@@ -46,6 +108,16 @@ export const KeyboardLayout: Component = () => {
         if (uiState.isRecordingValue) {
           uiState.addRecordedNote(`${key.note}${key.octave}`, adjustedVelocity);
         }
+
+        // Set emergency stop timeout for long holds (10 seconds)
+        if (emergencyStopTimeout) {
+          clearTimeout(emergencyStopTimeout);
+        }
+        emergencyStopTimeout = window.setTimeout(() => {
+          console.warn('Emergency stop triggered after 10 seconds');
+          audioEngineState.emergencyStopAll();
+          uiState.clearAllTouches();
+        }, 10000);
       }
     }
   };
@@ -101,6 +173,12 @@ export const KeyboardLayout: Component = () => {
   const handleTouchEnd = (event: TouchEvent) => {
     event.preventDefault();
 
+    // Clear emergency timeout since touch is ending
+    if (emergencyStopTimeout) {
+      clearTimeout(emergencyStopTimeout);
+      emergencyStopTimeout = undefined;
+    }
+
     for (let i = 0; i < event.changedTouches.length; i++) {
       const touch = event.changedTouches[i];
       const activeTouches = uiState.activeTouchesValue;
@@ -110,12 +188,18 @@ export const KeyboardLayout: Component = () => {
         // Stop the note
         const [note, octaveStr] = activeTouch.keyId.match(/([A-G][#b]?)(\d+)/)?.slice(1) || [];
         if (note && octaveStr) {
-          audioEngineState.stopNote({
-            note,
-            octave: parseInt(octaveStr),
-            frequency: 0,
-            midiNumber: 0
-          });
+          try {
+            audioEngineState.stopNote({
+              note,
+              octave: parseInt(octaveStr),
+              frequency: 0,
+              midiNumber: 0
+            });
+          } catch (error) {
+            console.error('Error stopping note in touch end:', error);
+            // Force stop all notes as fallback
+            audioEngineState.stopAllNotes();
+          }
         }
       }
 
@@ -125,6 +209,16 @@ export const KeyboardLayout: Component = () => {
   };
 
   const handleTouchCancel = (event: TouchEvent) => {
+    // Clear emergency timeout
+    if (emergencyStopTimeout) {
+      clearTimeout(emergencyStopTimeout);
+      emergencyStopTimeout = undefined;
+    }
+
+    // Stop all notes on touch cancel to be safe
+    audioEngineState.stopAllNotes();
+    uiState.clearAllTouches();
+
     handleTouchEnd(event);
   };
 
@@ -135,6 +229,23 @@ export const KeyboardLayout: Component = () => {
 
     const lastKey = keys[keys.length - 1];
     return lastKey.position + lastKey.width + 20; // Add some padding
+  };
+
+  const getKeyZIndex = (noteType: string) => {
+    // Higher z-index for non-triad keys so they appear on top of triad keys
+    // This creates the layered piano effect
+    switch (noteType) {
+      case 'chromatic':
+        return '40'; // Highest layer - chromatic notes on top
+      case 'scale':
+        return '30'; // Scale notes above pentatonic
+      case 'pentatonic':
+        return '20'; // Pentatonic notes above triads
+      case 'triad':
+        return '10'; // Base layer - triad keys at bottom
+      default:
+        return '10';
+    }
   };
 
   return (
@@ -156,19 +267,26 @@ export const KeyboardLayout: Component = () => {
         >
           <For each={keyboardState.keys}>
             {(key) => (
-              <KeyButton
-                key={key}
-                onPlay={(velocity) => {
-                  audioEngineState.resumeContext();
-                  audioEngineState.playNote(key, velocity);
-                  if (uiState.isRecordingValue) {
-                    uiState.addRecordedNote(`${key.note}${key.octave}`, velocity);
-                  }
+              <div
+                style={{
+                  position: 'absolute',
+                  'z-index': getKeyZIndex(key.noteType)
                 }}
-                onStop={() => {
-                  audioEngineState.stopNote(key);
-                }}
-              />
+              >
+                <KeyButton
+                  key={key}
+                  onPlay={(velocity) => {
+                    audioEngineState.resumeContext();
+                    audioEngineState.playNote(key, velocity);
+                    if (uiState.isRecordingValue) {
+                      uiState.addRecordedNote(`${key.note}${key.octave}`, velocity);
+                    }
+                  }}
+                  onStop={() => {
+                    audioEngineState.stopNote(key);
+                  }}
+                />
+              </div>
             )}
           </For>
         </div>

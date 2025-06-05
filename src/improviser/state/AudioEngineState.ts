@@ -12,11 +12,15 @@ export type InstrumentType = 'piano' | 'electric-piano' | 'synthesizer';
 export class AudioEngineState {
   private audioContext: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private reverbNode: ConvolverNode | null = null;
-  private activeNotes = new Map<string, { gainNode: GainNode; oscillator?: OscillatorNode }>();
+  private activeNotes = new Map<string, {
+    gainNode: GainNode;
+    oscillators: OscillatorNode[]; // Store all oscillators for proper cleanup
+  }>();
 
   // Reactive state atoms
-  public volume = createAtom(0.7);
+  public volume = createAtom(0.5);
   public instrument = createAtom<InstrumentType>('piano');
   public reverbMix = createAtom(0.3);
   public isInitialized = createAtom(false);
@@ -27,20 +31,40 @@ export class AudioEngineState {
 
   private async initializeAudio() {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Create audio context with proper iOS handling
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error('Web Audio API not supported');
+      }
+
+      this.audioContext = new AudioContextClass();
+      console.log('Audio context created:', this.audioContext.state);
+
+      // Create compressor to prevent clipping
+      this.compressor = this.audioContext.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-24, this.audioContext.currentTime);
+      this.compressor.knee.setValueAtTime(30, this.audioContext.currentTime);
+      this.compressor.ratio.setValueAtTime(12, this.audioContext.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.audioContext.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.audioContext.currentTime);
 
       // Create master gain node
       this.masterGain = this.audioContext.createGain();
-      this.masterGain.connect(this.audioContext.destination);
       this.masterGain.gain.value = this.volume();
+
+      // Connect: compressor -> master gain -> destination
+      this.compressor.connect(this.masterGain);
+      this.masterGain.connect(this.audioContext.destination);
 
       // Create reverb (simple delay for now, can be enhanced with impulse response)
       this.reverbNode = this.audioContext.createConvolver();
       this.setupReverb();
 
+      console.log('Audio engine initialized successfully');
       this.isInitialized.set(true);
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
+      this.isInitialized.set(false);
     }
   }
 
@@ -63,8 +87,20 @@ export class AudioEngineState {
   }
 
   public async resumeContext() {
-    if (this.audioContext?.state === 'suspended') {
-      await this.audioContext.resume();
+    if (!this.audioContext) {
+      console.warn('Audio context not initialized');
+      return;
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+        console.log('Audio context resumed:', this.audioContext.state);
+      } catch (error) {
+        console.error('Failed to resume audio context:', error);
+      }
+    } else {
+      console.log('Audio context state:', this.audioContext.state);
     }
   }
 
@@ -82,7 +118,17 @@ export class AudioEngineState {
   }
 
   public playNote(noteInfo: NoteInfo, velocity: number = 1) {
-    if (!this.audioContext || !this.masterGain) return;
+    console.log('playNote called:', noteInfo.note + noteInfo.octave, 'velocity:', velocity);
+
+    if (!this.audioContext || !this.compressor) {
+      console.warn('Audio context or compressor not available');
+      return;
+    }
+
+    if (this.audioContext.state !== 'running') {
+      console.warn('Audio context not running, state:', this.audioContext.state);
+      return;
+    }
 
     const noteKey = `${noteInfo.note}${noteInfo.octave}`;
 
@@ -91,35 +137,39 @@ export class AudioEngineState {
 
     // Create note-specific gain node
     const gainNode = this.audioContext.createGain();
-    gainNode.connect(this.masterGain);
+    gainNode.connect(this.compressor); // Connect to compressor instead of master gain
 
-    // Apply ADSR envelope
+    // Apply ADSR envelope with reduced levels to prevent clipping
     const now = this.audioContext.currentTime;
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(velocity * 0.8, now + 0.01); // Attack
-    gainNode.gain.exponentialRampToValueAtTime(velocity * 0.6, now + 0.1); // Decay
-    gainNode.gain.setValueAtTime(velocity * 0.4, now + 0.1); // Sustain
+    const safeVelocity = Math.min(velocity, 1.0); // Clamp velocity to 1.0
+    const baseGain = safeVelocity * 0.3; // Reduced base gain significantly
 
-    let oscillator: OscillatorNode | undefined;
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(baseGain, now + 0.01); // Attack
+    gainNode.gain.exponentialRampToValueAtTime(baseGain * 0.8, now + 0.1); // Decay
+    gainNode.gain.setValueAtTime(baseGain * 0.6, now + 0.1); // Sustain
+
+    let oscillators: OscillatorNode[] = [];
 
     // Create sound based on instrument type
     switch (this.instrument()) {
       case 'piano':
-        oscillator = this.createPianoSound(noteInfo.frequency, gainNode, now);
+        oscillators = this.createPianoSound(noteInfo.frequency, gainNode, now);
         break;
       case 'electric-piano':
-        oscillator = this.createElectricPianoSound(noteInfo.frequency, gainNode, now);
+        oscillators = this.createElectricPianoSound(noteInfo.frequency, gainNode, now);
         break;
       case 'synthesizer':
-        oscillator = this.createSynthSound(noteInfo.frequency, gainNode, now);
+        oscillators = this.createSynthSound(noteInfo.frequency, gainNode, now);
         break;
     }
 
-    // Store active note
-    this.activeNotes.set(noteKey, { gainNode, oscillator });
+    // Store active note with all oscillators
+    this.activeNotes.set(noteKey, { gainNode, oscillators });
+    console.log('Note started:', noteKey, 'Active notes:', this.activeNotes.size);
   }
 
-  private createPianoSound(frequency: number, gainNode: GainNode, startTime: number): OscillatorNode {
+  private createPianoSound(frequency: number, gainNode: GainNode, startTime: number): OscillatorNode[] {
     if (!this.audioContext) throw new Error('Audio context not initialized');
 
     // Create multiple harmonics for richer piano sound
@@ -135,14 +185,14 @@ export class AudioEngineState {
     harmonic2.type = 'sine';
     harmonic3.type = 'sine';
 
-    // Mix harmonics with different levels
+    // Mix harmonics with much lower levels to prevent clipping
     const fundamentalGain = this.audioContext.createGain();
     const harmonic2Gain = this.audioContext.createGain();
     const harmonic3Gain = this.audioContext.createGain();
 
-    fundamentalGain.gain.value = 1.0;
-    harmonic2Gain.gain.value = 0.3;
-    harmonic3Gain.gain.value = 0.1;
+    fundamentalGain.gain.value = 0.6; // Reduced from 1.0
+    harmonic2Gain.gain.value = 0.15; // Reduced from 0.3
+    harmonic3Gain.gain.value = 0.05; // Reduced from 0.1
 
     fundamental.connect(fundamentalGain);
     harmonic2.connect(harmonic2Gain);
@@ -156,10 +206,10 @@ export class AudioEngineState {
     harmonic2.start(startTime);
     harmonic3.start(startTime);
 
-    return fundamental; // Return main oscillator for reference
+    return [fundamental, harmonic2, harmonic3]; // Return all oscillators
   }
 
-  private createElectricPianoSound(frequency: number, gainNode: GainNode, startTime: number): OscillatorNode {
+  private createElectricPianoSound(frequency: number, gainNode: GainNode, startTime: number): OscillatorNode[] {
     if (!this.audioContext) throw new Error('Audio context not initialized');
 
     const oscillator = this.audioContext.createOscillator();
@@ -170,16 +220,21 @@ export class AudioEngineState {
     const filter = this.audioContext.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(2000, startTime);
-    filter.Q.setValueAtTime(2, startTime);
+    filter.Q.setValueAtTime(1, startTime);
+
+    // Add gain control to prevent clipping
+    const oscGain = this.audioContext.createGain();
+    oscGain.gain.value = 0.4; // Reduce gain to prevent clipping
 
     oscillator.connect(filter);
-    filter.connect(gainNode);
+    filter.connect(oscGain);
+    oscGain.connect(gainNode);
     oscillator.start(startTime);
 
-    return oscillator;
+    return [oscillator]; // Return as array for consistency
   }
 
-  private createSynthSound(frequency: number, gainNode: GainNode, startTime: number): OscillatorNode {
+  private createSynthSound(frequency: number, gainNode: GainNode, startTime: number): OscillatorNode[] {
     if (!this.audioContext) throw new Error('Audio context not initialized');
 
     const oscillator = this.audioContext.createOscillator();
@@ -194,16 +249,23 @@ export class AudioEngineState {
     filter.frequency.exponentialRampToValueAtTime(800, startTime + 0.3);
     filter.Q.setValueAtTime(10, startTime);
 
+    // Add gain control to prevent clipping
+    const oscGain = this.audioContext.createGain();
+    oscGain.gain.value = 0.3; // Reduce gain to prevent clipping from sawtooth wave
+
     oscillator.connect(filter);
-    filter.connect(gainNode);
+    filter.connect(oscGain);
+    oscGain.connect(gainNode);
     oscillator.start(startTime);
 
-    return oscillator;
+    return [oscillator]; // Return as array for consistency
   }
 
   public stopNote(noteInfo: NoteInfo) {
     const noteKey = `${noteInfo.note}${noteInfo.octave}`;
     const activeNote = this.activeNotes.get(noteKey);
+
+    console.log('stopNote called:', noteKey, 'activeNote exists:', !!activeNote);
 
     if (activeNote && this.audioContext) {
       const now = this.audioContext.currentTime;
@@ -213,28 +275,79 @@ export class AudioEngineState {
       activeNote.gainNode.gain.setValueAtTime(activeNote.gainNode.gain.value, now);
       activeNote.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
 
-      // Stop oscillator after release
-      if (activeNote.oscillator) {
-        activeNote.oscillator.stop(now + 0.3);
-      }
+      // Stop ALL oscillators after release
+      activeNote.oscillators.forEach(oscillator => {
+        try {
+          oscillator.stop(now + 0.3);
+        } catch (error) {
+          console.warn('Error stopping oscillator:', error);
+        }
+      });
 
-      // Clean up
-      setTimeout(() => {
-        this.activeNotes.delete(noteKey);
-      }, 300);
+      // Clean up immediately and also with timeout as backup
+      this.activeNotes.delete(noteKey);
+      console.log('Note stopped:', noteKey, 'Remaining active notes:', this.activeNotes.size);
     }
   }
 
   public stopAllNotes() {
-    for (const [noteKey, _] of this.activeNotes) {
-      const [note, octaveStr] = noteKey.match(/([A-G][#b]?)(\d+)/)?.slice(1) || [];
-      if (note && octaveStr) {
-        this.stopNote({
-          note,
-          octave: parseInt(octaveStr),
-          frequency: 0,
-          midiNumber: 0
+    console.log('stopAllNotes called, active notes:', this.activeNotes.size);
+
+    for (const [noteKey, activeNote] of this.activeNotes) {
+      if (this.audioContext) {
+        const now = this.audioContext.currentTime;
+
+        // Immediately stop gain to silence the note
+        activeNote.gainNode.gain.cancelScheduledValues(now);
+        activeNote.gainNode.gain.setValueAtTime(0, now);
+
+        // Stop all oscillators immediately
+        activeNote.oscillators.forEach(oscillator => {
+          try {
+            oscillator.stop(now);
+          } catch (error) {
+            console.warn('Error force-stopping oscillator:', error);
+          }
         });
+      }
+    }
+
+    // Clear all active notes
+    this.activeNotes.clear();
+    console.log('All notes stopped, remaining active notes:', this.activeNotes.size);
+  }
+
+  // Emergency method to force stop everything
+  public emergencyStopAll() {
+    console.warn('Emergency stop all notes called!');
+
+    // Try to stop all tracked notes first
+    this.stopAllNotes();
+
+    // If audio context exists, disconnect everything as last resort
+    if (this.audioContext && this.compressor && this.masterGain) {
+      try {
+        this.masterGain.disconnect();
+        this.compressor.disconnect();
+
+        // Recreate the audio chain
+        this.compressor = this.audioContext.createDynamicsCompressor();
+        this.compressor.threshold.setValueAtTime(-24, this.audioContext.currentTime);
+        this.compressor.knee.setValueAtTime(30, this.audioContext.currentTime);
+        this.compressor.ratio.setValueAtTime(12, this.audioContext.currentTime);
+        this.compressor.attack.setValueAtTime(0.003, this.audioContext.currentTime);
+        this.compressor.release.setValueAtTime(0.25, this.audioContext.currentTime);
+
+        this.masterGain = this.audioContext.createGain();
+        this.masterGain.gain.value = this.volume();
+
+        // Reconnect the chain
+        this.compressor.connect(this.masterGain);
+        this.masterGain.connect(this.audioContext.destination);
+
+        console.log('Audio chain recreated with compressor');
+      } catch (error) {
+        console.error('Error in emergency stop:', error);
       }
     }
   }
