@@ -1,0 +1,215 @@
+/* Custom styles for the musical instrument app */
+
+/* Prevent text selection on touch devices */
+.keyboard-container,
+.key-button,
+.transport-controls {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Dark theme scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #6b7280;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Key button animations */
+@keyframes keyPress {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes chordTonePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.key-press-animation {
+  animation: keyPress 0.1s ease-in-out;
+}
+
+.chord-tone-pulse {
+  animation: chordTonePulse 2s ease-in-out infinite;
+}
+
+/* Pulse animations with different intensities */
+.animate-pulse-strong {
+  animation: chordTonePulse 1s ease-in-out infinite;
+}
+
+.animate-pulse-moderate {
+  animation: chordTonePulse 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: chordTonePulse 2s ease-in-out infinite;
+}
+
+.animate-pulse-gentle {
+  animation: chordTonePulse 2.5s ease-in-out infinite;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Touch feedback */
+.touch-feedback {
+  position: relative;
+  overflow: hidden;
+}
+
+.touch-feedback::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.touch-feedback:active::after {
+  width: 100px;
+  height: 100px;
+}
+
+/* Keyboard layout styles */
+.keyboard-layout {
+  background: #0a0a0a;
+}
+
+.keyboard-container {
+  position: relative;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.keyboard-keys {
+  position: relative;
+  height: 100%;
+}
+
+/* Key button base styles */
+.key-button {
+  position: absolute;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s ease-in-out;
+}
+
+.key-button:hover {
+  filter: brightness(1.1);
+}
+
+.key-button:active {
+  transform: scale(0.95);
+}
+
+/* Responsive design helpers */
+@media (max-width: 768px) {
+  .control-panel {
+    order: 2;
+  }
+
+  .keyboard-area {
+    order: 1;
+    min-height: 60vh;
+  }
+}
+
+/* iPad specific optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .app-main {
+    height: calc(100vh - 80px);
+  }
+
+  .keyboard-container {
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (orientation: landscape) {
+  .control-panel {
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .key-button {
+    border-width: 0.5px;
+  }
+}
+
+/* Focus styles for accessibility */
+.key-button:focus,
+button:focus,
+select:focus,
+input:focus {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

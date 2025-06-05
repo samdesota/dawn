@@ -1,17 +1,225 @@
-import type { Component } from "solid-js";
-import { PickMidi } from "./midi/MidiPicker";
-import { DisplayMidi } from "./midi/DisplayMidi";
-import ListSamples from "./samples/ListSamples";
-import DrumPad from "./midi/pads/DrumPad";
-import ChordMap from "./chord-map/ChordMap";
-import HexImprov from "./hex-improv/HexImprov";
-import HexScaleExplorer from './hex-improv/HexScaleExplorer';
+import type { Component } from 'solid-js';
+import { onMount, onCleanup } from 'solid-js';
+
+import { KeyboardLayout } from './improviser/components/KeyboardLayout';
+import { ChordDisplay } from './improviser/components/ChordDisplay';
+import { TransportControls } from './improviser/components/TransportControls';
+import { SongSelector } from './improviser/components/SongSelector';
+
+import { audioEngineState } from './improviser/state/AudioEngineState';
+import { chordProgressionState } from './improviser/state/ChordProgressionState';
+import { playbackState } from './improviser/state/PlaybackState';
+import { uiState } from './improviser/state/UIState';
 
 const App: Component = () => {
+  // Initialize the application
+  onMount(async () => {
+    console.log('Musical Instrument App starting...');
+
+    try {
+      // Audio engine initializes automatically in its constructor
+      console.log('Audio engine initialized');
+
+      // Chord progressions are already initialized in constructor
+      console.log('Chord progressions initialized');
+
+      // Playback state is ready
+      console.log('Playback system initialized');
+
+      // Set default theme based on system preference
+      const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      uiState.updatePreference('keyboardTheme', isDarkMode ? 'dark' : 'light');
+
+      // Handle theme changes
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleThemeChange = (e: MediaQueryListEvent) => {
+        uiState.updatePreference('keyboardTheme', e.matches ? 'dark' : 'light');
+      };
+      mediaQuery.addEventListener('change', handleThemeChange);
+
+      // Cleanup listener on component unmount
+      onCleanup(() => {
+        mediaQuery.removeEventListener('change', handleThemeChange);
+      });
+
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+    }
+  });
+
+  // Handle visibility change to pause when app is hidden
+  onMount(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && playbackState.isPlaying) {
+        playbackState.pause();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    onCleanup(() => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    });
+  });
+
+  // Prevent default touch behaviors that might interfere with the instrument
+  onMount(() => {
+    const preventTouchDefaults = (e: TouchEvent) => {
+      // Allow single touch scrolling but prevent multi-touch gestures
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const preventContextMenu = (e: Event) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('touchstart', preventTouchDefaults, { passive: false });
+    document.addEventListener('touchmove', preventTouchDefaults, { passive: false });
+    document.addEventListener('contextmenu', preventContextMenu);
+
+    // Prevent zoom on double tap
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, false);
+
+    onCleanup(() => {
+      document.removeEventListener('touchstart', preventTouchDefaults);
+      document.removeEventListener('touchmove', preventTouchDefaults);
+      document.removeEventListener('contextmenu', preventContextMenu);
+    });
+  });
+
+  // Handle device orientation changes
+  onMount(() => {
+    const handleOrientationChange = () => {
+      // Small delay to allow the browser to adjust
+      setTimeout(() => {
+        // Trigger a recalculation of keyboard layout
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
+    };
+
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', handleOrientationChange);
+
+    onCleanup(() => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
+    });
+  });
+
+  const getThemeClasses = () => {
+    return uiState.isDarkTheme
+      ? 'bg-gray-900 text-white'
+      : 'bg-gray-100 text-gray-900';
+  };
+
+  const getCurrentTheme = () => {
+    return uiState.preferencesValue.keyboardTheme;
+  };
+
   return (
-    <p>
-      <HexImprov />
-    </p>
+    <div
+      class={`app min-h-screen ${getThemeClasses()} transition-colors duration-300`}
+      data-theme={getCurrentTheme()}
+    >
+      {/* Header */}
+      <header class="app-header bg-gray-800 text-white p-4 shadow-lg">
+        <div class="container mx-auto">
+          <h1 class="text-2xl font-bold text-center">
+            Musical Improvisation Assistant
+          </h1>
+          <p class="text-center text-gray-300 text-sm mt-1">
+            Touch-responsive chord progression tool for iPad
+          </p>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main class="app-main flex flex-col lg:flex-row min-h-[calc(100vh-80px)]">
+
+        {/* Control Panel */}
+        <div class="control-panel w-full lg:w-1/3 xl:w-1/4 p-4 space-y-4 bg-gray-50 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700">
+
+          {/* Chord Display */}
+          <ChordDisplay />
+
+          {/* Song Selector */}
+          <SongSelector />
+
+          {/* Transport Controls */}
+          <TransportControls />
+
+          {/* Quick Settings */}
+          <div class="quick-settings bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-3">Quick Settings</h3>
+
+            <div class="setting-item mb-3">
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={uiState.preferencesValue.showChordRoles}
+                  onChange={(e) => uiState.updatePreference('showChordRoles', e.target.checked)}
+                  class="mr-2"
+                />
+                <span class="text-sm">Highlight Chord Tones</span>
+              </label>
+            </div>
+
+            <div class="setting-item mb-3">
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={uiState.preferencesValue.showProgressBar}
+                  onChange={(e) => uiState.updatePreference('showProgressBar', e.target.checked)}
+                  class="mr-2"
+                />
+                <span class="text-sm">Show Progress Bar</span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <label class="block text-sm font-medium mb-1">Theme</label>
+              <select
+                value={uiState.preferencesValue.keyboardTheme}
+                onChange={(e) => uiState.updatePreference('keyboardTheme', e.target.value as 'light' | 'dark')}
+                class="w-full px-2 py-1 border rounded text-sm bg-white dark:bg-gray-600 dark:border-gray-500"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Keyboard Area */}
+        <div class="keyboard-area flex-1 p-4 overflow-hidden">
+          <div class="keyboard-container h-full">
+            <KeyboardLayout />
+          </div>
+        </div>
+      </main>
+
+      {/* Audio Status Indicator */}
+      <div class="audio-status fixed bottom-4 right-4 z-50">
+        <div
+          class="status-indicator px-3 py-2 rounded-full text-sm font-medium shadow-lg"
+          classList={{
+            'bg-green-500 text-white': audioEngineState.audioInitialized,
+            'bg-red-500 text-white': !audioEngineState.audioInitialized
+          }}
+        >
+          {audioEngineState.audioInitialized ? 'Audio Ready' : 'Audio Error'}
+        </div>
+      </div>
+    </div>
   );
 };
 

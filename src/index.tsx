@@ -1,4 +1,5 @@
 import 'uno.css';
+import './styles/custom.css';
 import { render } from 'solid-js/web';
 
 import App from './App';
