@@ -290,6 +290,34 @@ export class AudioEngineState {
     }
   }
 
+  public playChord(noteInfos: NoteInfo[], velocity: number = 1, duration: number = 1.0) {
+    console.log('playChord called with', noteInfos.length, 'notes, velocity:', velocity, 'duration:', duration);
+
+    if (!this.audioContext || !this.compressor) {
+      console.warn('Audio context or compressor not available');
+      return;
+    }
+
+    if (this.audioContext.state !== 'running') {
+      console.warn('Audio context not running, state:', this.audioContext.state);
+      return;
+    }
+
+    // Play each note in the chord with slight timing offset for more natural sound
+    noteInfos.forEach((noteInfo, index) => {
+      setTimeout(() => {
+        this.playNote(noteInfo, velocity);
+
+        // Schedule note stop if duration is specified
+        if (duration > 0) {
+          setTimeout(() => {
+            this.stopNote(noteInfo);
+          }, duration * 1000);
+        }
+      }, index * 10); // 10ms stagger between notes
+    });
+  }
+
   public stopAllNotes() {
     console.log('stopAllNotes called, active notes:', this.activeNotes.size);
 
