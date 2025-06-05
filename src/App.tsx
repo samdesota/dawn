@@ -10,7 +10,7 @@ import HexScaleExplorer from './hex-improv/HexScaleExplorer';
 const App: Component = () => {
   return (
     <p>
-      <HexScaleExplorer />
+      <HexImprov />
     </p>
   );
 };

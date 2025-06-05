@@ -2,6 +2,9 @@ import { Accessor, Setter } from 'solid-js';
 import audioEngine from './audioEngine';
 import { scales } from './musicData';
 
+// Layout types
+export type LayoutType = 'honeycomb' | 'spiral';
+
 // Hexagon data structure
 export interface HexagonData {
   x: number;
@@ -22,6 +25,74 @@ export interface CanvasState {
   activeTouches: Map<number, number>; // touchId -> noteIndex
   activeMouseNote: number | null;
   animationFrameId: number | null;
+  layoutType: LayoutType;
+}
+
+function findNextHexagonPosition(direction: number, position: {x: number, y: number}, hexSize: number) {
+  // For flat-topped hexagons, we need proper spacing
+  const hexWidth = hexSize * Math.sqrt(3);
+  const hexHeight = hexSize * 2;
+  const verticalSpacing = hexHeight * 0.75;
+
+  // Calculate the distance between hex centers
+  const distance = hexWidth;
+
+  // For flat-topped hexagons, start from top (270 degrees) and go clockwise
+  // Direction 0 = top, 1 = top-right, 2 = bottom-right, 3 = bottom, 4 = bottom-left, 5 = top-left
+  const angle = (Math.PI / 3) * direction - (Math.PI / 2); // Start from top (-90 degrees)
+
+  const x = position.x + distance * Math.cos(angle);
+  const y = position.y + distance * Math.sin(angle);
+
+  return { x, y };
+}
+
+function layoutSpiralHexagons(hexagons: number, origin: {x: number, y: number}, hexSize: number) {
+  let positions: {x: number, y: number}[] = [];
+
+  if (hexagons <= 0) return positions;
+
+  // Add center position
+  positions.push({x: origin.x, y: origin.y});
+
+  if (hexagons === 1) return positions;
+
+  let ring = 1;
+  let currentPos = {x: origin.x, y: origin.y};
+
+  // Move to start of first ring (go top first - direction 0)
+  currentPos = findNextHexagonPosition(0, currentPos, hexSize);
+  positions.push(currentPos);
+
+  let placedInCurrentRing = 1;
+  let direction = 2; // Start going bottom-right after the first step top
+
+  for (let i = 2; i < hexagons; i++) {
+    const hexesInCurrentRing = 6 * ring;
+
+    if (placedInCurrentRing < hexesInCurrentRing) {
+      // Continue in current ring
+      currentPos = findNextHexagonPosition(direction, currentPos, hexSize);
+      positions.push(currentPos);
+      placedInCurrentRing++;
+
+      // Change direction after placing 'ring' hexagons in current direction
+      if (placedInCurrentRing % ring === 0) {
+        direction = (direction + 1) % 6;
+      }
+    } else {
+      // Move to next ring
+      ring++;
+      placedInCurrentRing = 1;
+      direction = 1; // Reset to top-right
+
+      // Move to start of next ring (go top - direction 0)
+      currentPos = findNextHexagonPosition(0, currentPos, hexSize);
+      positions.push(currentPos);
+    }
+  }
+
+  return positions;
 }
 
 export class ScaleExplorerCanvas {
@@ -42,19 +113,40 @@ export class ScaleExplorerCanvas {
       selectedNote: null,
       activeTouches: new Map(),
       activeMouseNote: null,
-      animationFrameId: null
+      animationFrameId: null,
+      layoutType: 'honeycomb'
     };
+  }
+
+  // Set layout type
+  setLayoutType(layoutType: LayoutType) {
+    this.state.layoutType = layoutType;
+    this.setupHexGrid();
+  }
+
+  // Get current layout type
+  getLayoutType(): LayoutType {
+    return this.state.layoutType;
   }
 
   // Get hex coordinates for honeycomb layout
   private getHexCoordinates(row: number, col: number, hexSize: number): { x: number; y: number } {
+    // Proper hexagon spacing calculations for flat-topped hexagons
+    const hexWidth = hexSize * Math.sqrt(3); // Width of flat-topped hexagon
+    const hexHeight = hexSize * 2; // Height of flat-topped hexagon
+    const verticalSpacing = hexHeight * 0.75; // Overlap hexagons vertically
+
+    // Offset every other row to create honeycomb pattern
     const isEvenRow = row % 2 === 0;
-    const x = col * (hexSize * Math.sqrt(3)) + (isEvenRow ? 0 : hexSize * Math.sqrt(3) / 2);
-    const y = row * (hexSize * 1.5);
+    const horizontalOffset = isEvenRow ? 0 : hexWidth / 2;
+
+    const x = col * hexWidth + horizontalOffset;
+    const y = row * verticalSpacing;
+
     return { x, y };
   }
 
-  // Setup hexagonal grid
+  // Setup hexagonal grid with different layout options
   setupHexGrid(): HexagonData[] {
     if (!this.state.canvas) return [];
 
@@ -62,6 +154,11 @@ export class ScaleExplorerCanvas {
     const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const hexagons: HexagonData[] = [];
 
+    if (this.state.layoutType === 'spiral') {
+      return this.setupSpiralLayout();
+    }
+
+    // Original honeycomb layout
     // 6 octaves: 2, 3, 4, 5, 6, 7 (more practical range similar to piano)
     const numOctaves = 6;
     const startOctave = 2;
@@ -75,6 +172,11 @@ export class ScaleExplorerCanvas {
     const availableWidth = this.state.canvas.width - (2 * paddingX);
     const availableHeight = this.state.canvas.height - (2 * paddingY);
 
+    // Better hex size calculation for proper honeycomb spacing
+    const hexWidth = (hexSize: number) => hexSize * Math.sqrt(3);
+    const hexHeight = (hexSize: number) => hexSize * 2;
+    const verticalSpacing = (hexSize: number) => hexHeight(hexSize) * 0.75;
+
     const optimalHexSizeByWidth = availableWidth / (notesInScale * Math.sqrt(3));
     const optimalHexSizeByHeight = availableHeight / (numOctaves * 1.5);
     const optimalHexSize = Math.min(optimalHexSizeByWidth, optimalHexSizeByHeight);
@@ -83,13 +185,11 @@ export class ScaleExplorerCanvas {
     const maxHexSize = 50;
     const hexSize = Math.max(minHexSize, Math.min(maxHexSize, optimalHexSize));
 
-    // Calculate grid dimensions and centering
-    const hexWidth = hexSize * Math.sqrt(3);
-    const hexHeight = hexSize * 1.5;
-    const gridWidth = currentScale.length * hexWidth;
-    const gridHeight = numOctaves * hexHeight;
-    const offsetX = (this.state.canvas.width - gridWidth) / 2 + hexWidth/2;
-    const offsetY = (this.state.canvas.height - gridHeight) / 2 + hexSize;
+    // Calculate grid dimensions and centering with corrected spacing for flat-topped hexagons
+    const totalGridWidth = notesInScale * hexWidth(hexSize);
+    const totalGridHeight = (numOctaves - 1) * verticalSpacing(hexSize) + hexHeight(hexSize);
+    const offsetX = (this.state.canvas.width - totalGridWidth) / 2 + hexWidth(hexSize) / 2;
+    const offsetY = (this.state.canvas.height - totalGridHeight) / 2 + hexSize;
 
     // Generate grid - one row per octave (top = octave 7, bottom = octave 2)
     for (let octave = endOctave; octave >= startOctave; octave--) {
@@ -133,6 +233,93 @@ export class ScaleExplorerCanvas {
     return hexagons;
   }
 
+  // Setup spiral layout
+  private setupSpiralLayout(): HexagonData[] {
+    if (!this.state.canvas) return [];
+
+    const currentScale = scales[this.selectedScale() as keyof typeof scales];
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const hexagons: HexagonData[] = [];
+
+    // Calculate center of canvas
+    const centerX = this.state.canvas.width / 2;
+    const centerY = this.state.canvas.height / 2;
+
+    // Calculate optimal hex size for spiral layout
+    const minDimension = Math.min(this.state.canvas.width, this.state.canvas.height);
+    const maxRadius = (minDimension * 0.4) / 8; // Estimate for 8 rings
+    const hexSize = Math.max(15, Math.min(35, maxRadius));
+
+    // Generate notes in spiral order starting from center
+    // Start with middle C (C4) at the center, then spiral outward
+    const centerOctave = 4;
+    const centerScaleIndex = 0; // C
+
+    // Create spiral pattern that moves through the scale
+    const spiralNotes: Array<{octave: number, scaleIndex: number}> = [];
+
+    // Add center note first (C4)
+    spiralNotes.push({ octave: centerOctave, scaleIndex: centerScaleIndex });
+
+    // Generate spiral pattern - simply iterate through scale notes and octaves
+    let currentOctave = centerOctave;
+    let currentScaleIndex = centerScaleIndex;
+
+    for (let i = 1; i < 60; i++) { // Limit to reasonable number
+      // Move to next note in scale
+      currentScaleIndex++;
+
+      // If we've completed a scale, move to next octave
+      if (currentScaleIndex >= currentScale.length) {
+        currentScaleIndex = 0;
+        currentOctave++;
+
+        // Keep octaves in reasonable range, wrap around if needed
+        if (currentOctave > 7) {
+          currentOctave = 2; // Start from octave 2 again
+        }
+      }
+
+      spiralNotes.push({ octave: currentOctave, scaleIndex: currentScaleIndex });
+    }
+
+    // Calculate all spiral positions once
+    const spiralPositions = layoutSpiralHexagons(spiralNotes.length, {x: centerX, y: centerY}, hexSize);
+
+    // Place hexagons in spiral positions
+    spiralNotes.forEach((noteInfo, index) => {
+      // Get position from pre-calculated array instead of calling getSpiralCoordinates
+      const position = spiralPositions[index] || { x: centerX, y: centerY };
+
+      // Check if position is within canvas bounds
+      const padding = hexSize + 10;
+      if (position.x < padding || position.x > this.state.canvas!.width - padding ||
+          position.y < padding || position.y > this.state.canvas!.height - padding) {
+        return; // Skip notes outside canvas
+      }
+
+      const scaleNote = currentScale[noteInfo.scaleIndex];
+      const noteInOctave = scaleNote % 12;
+      const absoluteNoteIndex = scaleNote + (noteInfo.octave * 12);
+      const noteName = noteNames[noteInOctave];
+      const displayNote = `${noteName}${noteInfo.octave}`;
+
+      hexagons.push({
+        x: position.x,
+        y: position.y,
+        radius: hexSize,
+        noteIndex: absoluteNoteIndex,
+        note: noteName,
+        octave: noteInfo.octave,
+        displayNote: displayNote,
+        scaleIndex: noteInfo.scaleIndex
+      });
+    });
+
+    this.state.hexagons = hexagons;
+    return hexagons;
+  }
+
   // Draw hexagon
   private drawHexagon(hex: HexagonData, fillColor: string, strokeColor: string = '#444') {
     if (!this.state.ctx) return;
@@ -141,7 +328,8 @@ export class ScaleExplorerCanvas {
 
     this.state.ctx.beginPath();
     for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i + Math.PI / 6;
+      // Rotate by 30 degrees (π/6) to make hexagons flat-topped instead of pointy-topped
+      const angle = (Math.PI / 3) * i;
       const hx = x + radius * Math.cos(angle);
       const hy = y + radius * Math.sin(angle);
       if (i === 0) this.state.ctx.moveTo(hx, hy);
@@ -155,12 +343,21 @@ export class ScaleExplorerCanvas {
     this.state.ctx.lineWidth = 2;
     this.state.ctx.stroke();
 
-    // Draw text
+    // Draw debugging text - show hexagon order number
     this.state.ctx.fillStyle = 'white';
-    this.state.ctx.font = 'bold 14px sans-serif';
+    this.state.ctx.font = 'bold 16px sans-serif';
     this.state.ctx.textAlign = 'center';
     this.state.ctx.textBaseline = 'middle';
-    this.state.ctx.fillText(hex.displayNote, x, y);
+
+    // Find the index of this hexagon in the array for debugging
+    const hexIndex = this.state.hexagons.findIndex(h => h.x === hex.x && h.y === hex.y);
+    const debugLabel = hexIndex >= 0 ? (hexIndex + 1).toString() : '?';
+
+    this.state.ctx.fillText(debugLabel, x, y - 5);
+
+    // Also show the note name below in smaller text
+    this.state.ctx.font = 'bold 10px sans-serif';
+    this.state.ctx.fillText(hex.displayNote, x, y + 8);
   }
 
   // Get interval color based on consonance/resonance with all currently playing notes

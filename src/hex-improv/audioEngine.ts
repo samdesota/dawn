@@ -297,12 +297,12 @@ class AudioEngine {
   }
 
   // Get chord notes based on scale and chord index
-  getChordNotes(scale: string, chordRoot: number) {
+  getChordNotes(scale: string, chordRoot: number, octave: number) {
     const scaleNotes = scales[scale as keyof typeof scales];
     return [
-      this.getFrequency(scaleNotes[chordRoot % scaleNotes.length]),
-      this.getFrequency(scaleNotes[(chordRoot + 2) % scaleNotes.length]),
-      this.getFrequency(scaleNotes[(chordRoot + 4) % scaleNotes.length])
+      this.getFrequency(scaleNotes[chordRoot % scaleNotes.length] + 12 * octave),
+      this.getFrequency(scaleNotes[(chordRoot + 2) % scaleNotes.length] + 12 * octave),
+      this.getFrequency(scaleNotes[(chordRoot + 4) % scaleNotes.length] + 12 * octave)
     ];
   }
 

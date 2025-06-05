@@ -1,7 +1,7 @@
 import { Component, createSignal, onMount, onCleanup, createEffect } from 'solid-js';
 import audioEngine, { SynthType } from './audioEngine';
 import { scales } from './musicData';
-import { ScaleExplorerCanvas } from './ScaleExplorerCanvas';
+import { ScaleExplorerCanvas, LayoutType } from './ScaleExplorerCanvas';
 
 const HexScaleExplorer: Component = () => {
   const [selectedScale, setSelectedScale] = createSignal('major');
@@ -9,6 +9,7 @@ const HexScaleExplorer: Component = () => {
   const [audioUnlocked, setAudioUnlocked] = createSignal(false);
   const [canvas, setCanvas] = createSignal<HTMLCanvasElement | null>(null);
   const [synthType, setSynthType] = createSignal<SynthType>('sine');
+  const [layoutType, setLayoutType] = createSignal<LayoutType>('spiral');
 
   let canvasManager: ScaleExplorerCanvas | null = null;
 
@@ -21,6 +22,12 @@ const HexScaleExplorer: Component = () => {
     { value: 'warm', label: 'Warm Pad', description: 'Rich harmonics' },
     { value: 'bright', label: 'Bright Lead', description: 'Sharp & cutting' },
     { value: 'organ', label: 'Organ', description: 'Classic drawbar' }
+  ];
+
+  // Layout options with descriptions
+  const layoutOptions: { value: LayoutType; label: string; description: string }[] = [
+    { value: 'honeycomb', label: 'Honeycomb', description: 'Grid layout by octave' },
+    { value: 'spiral', label: 'Spiral', description: 'Spiral from center outward' }
   ];
 
   // Function to unlock audio on iOS Safari
@@ -49,6 +56,14 @@ const HexScaleExplorer: Component = () => {
     audioEngine.setSynthType(newSynthType);
   };
 
+  // Handle layout type change
+  const handleLayoutTypeChange = (newLayoutType: LayoutType) => {
+    setLayoutType(newLayoutType);
+    if (canvasManager) {
+      canvasManager.setLayoutType(newLayoutType);
+    }
+  };
+
   // Initialize canvas
   onMount(() => {
     document.addEventListener('touchstart', unlockAudio, { once: true });
@@ -61,6 +76,7 @@ const HexScaleExplorer: Component = () => {
         // Create canvas manager instance
         canvasManager = new ScaleExplorerCanvas(selectedScale, setSelectedNote);
         canvasManager.initialize(canvasElem, context);
+        canvasManager.setLayoutType(layoutType());
       }
     }
   });
@@ -116,6 +132,29 @@ const HexScaleExplorer: Component = () => {
             {scale}
           </button>
         ))}
+      </div>
+
+      {/* Layout selector */}
+      <div class="mb-4">
+        <div class="text-center text-sm text-gray-300 mb-2">🔄 Layout</div>
+        <div class="flex justify-center gap-2">
+          {layoutOptions.map((option) => (
+            <button
+              class={`px-3 py-1 text-sm rounded transition-colors ${
+                layoutType() === option.value
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+              onClick={() => handleLayoutTypeChange(option.value)}
+              title={option.description}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div class="text-center text-xs text-gray-400 mt-1">
+          {layoutOptions.find(opt => opt.value === layoutType())?.description}
+        </div>
       </div>
 
       {/* Synth type selector */}
