@@ -97,11 +97,11 @@ export class KeyboardState {
       case 'triad':
         return { width: baseWidth, height: baseHeight }; // Full height, base layer
       case 'pentatonic':
-        return { width: baseWidth * 0.3, height: baseHeight * 0.75 }; // 75% height, narrower
+        return { width: baseWidth * 0.4, height: baseHeight * 0.8 }; // 75% height, narrower
       case 'scale':
-        return { width: baseWidth * 0.3, height: baseHeight * 0.6 }; // 60% height, narrower
+        return { width: baseWidth * 0.4, height: baseHeight * 0.6 }; // 60% height, narrower
       case 'chromatic':
-        return { width: baseWidth * 0.3, height: baseHeight * 0.45 }; // 45% height, narrowest
+        return { width: baseWidth * 0.4, height: baseHeight * 0.3 }; // 45% height, narrowest
       default:
         return { width: baseWidth, height: baseHeight };
     }
@@ -133,24 +133,6 @@ export class KeyboardState {
     groupedNonTriadKeys.forEach(group => {
       this.positionNonTriadGroup(group);
     });
-  }
-
-  private groupKeysByOctave(keys: KeyInfo[]): KeyInfo[][] {
-    const groups: { [octave: number]: KeyInfo[] } = {};
-
-    keys.forEach(key => {
-      if (!groups[key.octave]) {
-        groups[key.octave] = [];
-      }
-      groups[key.octave].push(key);
-    });
-
-    return Object.values(groups);
-  }
-
-  private layoutOctave(octaveKeys: KeyInfo[], startPosition: number): number {
-    // This method is no longer used but keeping for compatibility
-    return startPosition;
   }
 
   private groupNonTriadKeysByTriadIntervals(nonTriadKeys: KeyInfo[], triadKeys: KeyInfo[]): Array<{
@@ -296,7 +278,7 @@ export class KeyboardState {
 
         if (shouldOverlap) {
           // 20% overlap: move by 80% of current key's width
-          currentPosition += key.width * 0.8;
+          currentPosition += key.width * 0.55;
         } else {
           // Non-chromatic keys get small gap
           currentPosition += key.width + 1;
@@ -343,17 +325,39 @@ export class KeyboardState {
   }
 
   public getKeyAtPosition(x: number): KeyInfo | undefined {
-    return this.keyboardKeys().find(key =>
+    const candidateKeys = this.keyboardKeys().filter(key =>
       x >= key.position && x <= key.position + key.width
     );
+
+    // If multiple keys overlap, return the one with highest z-index (chromatic > scale > pentatonic > triad)
+    if (candidateKeys.length > 1) {
+      return candidateKeys.reduce((highest, current) => {
+        const currentZIndex = this.getZIndexForNoteType(current.noteType);
+        const highestZIndex = this.getZIndexForNoteType(highest.noteType);
+        return currentZIndex > highestZIndex ? current : highest;
+      });
+    }
+
+    return candidateKeys[0];
   }
 
   public getKeyAtCoordinates(x: number, y: number): KeyInfo | undefined {
-    return this.keyboardKeys().find(key => {
+    const candidateKeys = this.keyboardKeys().filter(key => {
       const withinX = x >= key.position && x <= key.position + key.width;
       const withinY = y >= 0 && y <= key.height; // Assuming keys start at y=0
       return withinX && withinY;
     });
+
+    // If multiple keys overlap, return the one with highest z-index (chromatic > scale > pentatonic > triad)
+    if (candidateKeys.length > 1) {
+      return candidateKeys.reduce((highest, current) => {
+        const currentZIndex = this.getZIndexForNoteType(current.noteType);
+        const highestZIndex = this.getZIndexForNoteType(highest.noteType);
+        return currentZIndex > highestZIndex ? current : highest;
+      });
+    }
+
+    return candidateKeys[0];
   }
 
   public setOctaveRange(start: number, end: number) {
@@ -396,6 +400,17 @@ export class KeyboardState {
   public getDisplayNoteName(note: string): string {
     // Return enharmonic equivalent for sharp notes in certain contexts
     return this.enharmonicMap[note] || note;
+  }
+
+  // Helper method to get z-index value for note type (matches KeyButton.tsx logic)
+  private getZIndexForNoteType(noteType: 'triad' | 'pentatonic' | 'scale' | 'chromatic'): number {
+    switch (noteType) {
+      case 'chromatic': return 40; // Highest layer
+      case 'scale': return 30;
+      case 'pentatonic': return 20;
+      case 'triad': return 10; // Base layer
+      default: return 10;
+    }
   }
 
   // Getters for reactive values

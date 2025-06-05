@@ -271,17 +271,7 @@ export class UIState {
   ): string {
     const theme = this.preferences().keyboardTheme;
 
-    if (isHighlighted && chordRole) {
-      // Highlighted chord tones with intensity hierarchy - warm gray tones with higher saturation
-      switch (chordRole) {
-        case 'root': return '#4a3d2f'; // Dark gray with stronger warm amber tint
-        case 'third': return '#524335'; // Medium gray with stronger warm amber tint
-        case 'fifth': return '#5a493b'; // Lighter gray with stronger warm amber tint
-        case 'seventh': return '#48392d'; // Darker gray with stronger warm amber tint
-        case 'extension': return '#48392d'; // Darker gray with stronger warm amber tint
-      }
-    }
-
+    // Remove highlighted background colors - now using bottom border instead
     // Default colors based on note type
     const isDark = theme === 'dark';
 
@@ -302,6 +292,25 @@ export class UIState {
     }
 
     return isDark ? '#1c1c1c' : '#f8f9fa';
+  }
+
+  public getKeyBottomBorderColor(
+    isHighlighted: boolean,
+    chordRole?: 'root' | 'third' | 'fifth' | 'seventh' | 'extension'
+  ): string {
+    if (!isHighlighted || !chordRole) {
+      return 'transparent';
+    }
+
+    // Bottom border colors for chord tones with intensity hierarchy
+    switch (chordRole) {
+      case 'root': return '#d97706'; // Amber-600 - strongest
+      case 'third': return '#f59e0b'; // Amber-500 - strong
+      case 'fifth': return '#fbbf24'; // Amber-400 - medium
+      case 'seventh': return '#fcd34d'; // Amber-300 - lighter
+      case 'extension': return '#fde68a'; // Amber-200 - lightest
+      default: return 'transparent';
+    }
   }
 
   public getKeyTextColor(): string {

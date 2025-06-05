@@ -37,7 +37,7 @@ export const ChordCompingControls: Component = () => {
   };
 
   return (
-    <div class="chord-comping-controls bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+    <div class="chord-comping-controls text-white p-4 rounded-lg" style="background-color: #1c1c1c;">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Chord Comping</h3>
 

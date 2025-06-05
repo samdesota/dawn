@@ -122,9 +122,7 @@ const App: Component = () => {
   });
 
   const getThemeClasses = () => {
-    return uiState.isDarkTheme
-      ? 'bg-gray-900 text-white'
-      : 'bg-gray-100 text-gray-900';
+    return 'bg-black text-white';
   };
 
   const getCurrentTheme = () => {
@@ -137,7 +135,7 @@ const App: Component = () => {
       data-theme={getCurrentTheme()}
     >
       {/* Header */}
-      <header class="app-header bg-gray-800 text-white p-4 shadow-lg">
+      <header class="app-header bg-black text-white p-4 shadow-lg">
         <div class="container mx-auto">
           <h1 class="text-2xl font-bold text-center">
             Musical Improvisation Assistant
@@ -152,7 +150,7 @@ const App: Component = () => {
       <main class="app-main flex flex-col min-h-[calc(100vh-80px)]">
 
         {/* Control Panel - Grid Layout */}
-        <div class="control-panel w-full p-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+        <div class="control-panel w-full p-4 bg-black border-b border-gray-700">
           <div class="grid grid-cols-1 md:grid-cols-2  gap-4">
 
             {/* Song Selector */}
@@ -168,7 +166,7 @@ const App: Component = () => {
         </div>
 
         {/* Keyboard Area - Full Width */}
-        <div class="keyboard-area flex-1 p-4 overflow-hidden flex flex-col">
+        <div class="keyboard-area flex-1 p-4 overflow-hidden flex flex-col bg-black">
           <div class="keyboard-container flex flex-col flex-1 w-full">
             <KeyboardLayout />
           </div>

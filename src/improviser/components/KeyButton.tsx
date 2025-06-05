@@ -19,6 +19,10 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
     );
 
     const textColor = uiState.getKeyTextColor();
+    const bottomBorderColor = uiState.getKeyBottomBorderColor(
+      props.key.isHighlighted,
+      props.key.chordRole
+    );
 
     // Z-index based on note type hierarchy
     const getZIndex = (): number => {
@@ -42,15 +46,12 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
       transform: isPressed() ? 'scale(0.95)' : 'scale(1)',
       'box-shadow': isPressed()
         ? 'inset 0 2px 4px rgba(0,0,0,0.3)'
-        : props.key.isHighlighted
-          ? '0 0 8px rgba(90, 73, 59, 0.4)'
-          : '0 1px 3px rgba(0,0,0,0.2)',
+        : '0 1px 3px rgba(0,0,0,0.2)',
       'border-radius': '4px',
-      border: props.key.isHighlighted
-        ? '2px solid rgba(90, 73, 59, 0.6)'
-        : '1px solid rgba(255,255,255,0.1)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      'border-bottom': `5px solid ${bottomBorderColor}`,
       transition: uiState.shouldShowAnimations
-        ? 'all 0.1s ease-in-out, background-color 0.3s ease'
+        ? 'all 0.1s ease-in-out, background-color 0.3s ease, border-bottom-color 0.3s ease'
         : 'none'
     };
   };
@@ -100,6 +101,9 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
     <button
       class={`key-button select-none touch-none`}
       style={getKeyStyles()}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       aria-label={`${props.key.note}${props.key.octave} - ${props.key.noteType} note`}
       data-note={props.key.note}
       data-octave={props.key.octave}

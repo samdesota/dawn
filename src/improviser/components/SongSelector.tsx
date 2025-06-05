@@ -40,7 +40,7 @@ export const SongSelector: Component = () => {
   };
 
   return (
-    <div class="song-selector bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+    <div class="song-selector text-white p-4 rounded-lg" style="background-color: #1c1c1c;">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Song Selection</h3>
       </div>
@@ -65,7 +65,7 @@ export const SongSelector: Component = () => {
 
       {/* Song Information */}
       {getSongInfo() && (
-        <div class="song-info mb-4 p-3 bg-gray-700 rounded-lg">
+        <div class="song-info mb-4 p-3 rounded" style="background-color: #1c1c1c;">
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span class="text-gray-400">Key:</span>
@@ -97,11 +97,12 @@ export const SongSelector: Component = () => {
             {(chord) => (
               <button
                 onClick={() => handleChordClick(chord.index)}
-                class="chord-preview p-2 rounded text-center transition-all duration-200"
+                class="chord-preview p-2 rounded transition-all duration-200"
                 classList={{
                   'bg-yellow-600 text-black': chord.isCurrent,
-                  'bg-gray-600 hover:bg-gray-500 text-white': !chord.isCurrent
+                  'text-white': !chord.isCurrent
                 }}
+                style={chord.isCurrent ? {} : { 'background-color': '#1c1c1c' }}
                 aria-label={`Select chord ${chord.symbol}`}
               >
                 <div class="chord-symbol font-bold text-sm">
@@ -118,7 +119,7 @@ export const SongSelector: Component = () => {
 
       {/* Current Chord Details */}
       {chordProgressionState.getCurrentChord() && (
-        <div class="current-chord-details mt-4 p-3 bg-gray-700 rounded-lg">
+        <div class="current-chord-details mt-4 p-3 rounded" style="background-color: #1c1c1c;">
           <div class="text-sm font-medium mb-2 text-gray-300">Current Chord Details</div>
           <div class="chord-info">
             <div class="flex items-center justify-between mb-2">
@@ -158,13 +159,15 @@ export const SongSelector: Component = () => {
       <div class="quick-actions mt-4 flex justify-center space-x-2">
         <button
           onClick={() => chordProgressionState.previousChord()}
-          class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm transition-colors"
+          class="px-3 py-1 rounded text-sm transition-colors text-white"
+          style="background-color: #1c1c1c;"
         >
           ← Prev
         </button>
         <button
           onClick={() => chordProgressionState.nextChord()}
-          class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm transition-colors"
+          class="px-3 py-1 rounded text-sm transition-colors text-white"
+          style="background-color: #1c1c1c;"
         >
           Next →
         </button>

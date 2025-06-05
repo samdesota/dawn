@@ -66,14 +66,15 @@ export const TransportControls: Component = () => {
   return (
     <div class="transport-controls-container space-y-4">
       {/* Main Transport Controls */}
-      <div class="transport-controls bg-gray-800 text-white p-4 rounded-lg shadow-lg">
+      <div class="transport-controls text-white p-4 rounded-lg" style="background-color: #1c1c1c;">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold">Transport</h3>
 
           <div class="transport-buttons flex items-center space-x-2">
             <button
               onClick={handlePreviousChord}
-              class="btn-transport px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+              class="btn-transport px-3 py-2 rounded transition-colors text-white"
+              style="background-color: #1c1c1c;"
               aria-label="Previous chord"
             >
               ⏮️
@@ -98,7 +99,8 @@ export const TransportControls: Component = () => {
 
             <button
               onClick={handleNextChord}
-              class="btn-transport px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+              class="btn-transport px-3 py-2 rounded transition-colors text-white"
+              style="background-color: #1c1c1c;"
               aria-label="Next chord"
             >
               ⏭️
@@ -106,29 +108,30 @@ export const TransportControls: Component = () => {
           </div>
         </div>
 
-        <div class="controls-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="tempo-beats-controls grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Tempo Control */}
-          <div class="tempo-control">
+          <div class="tempo-control p-3 rounded">
             <label class="block text-sm font-medium mb-2">
               Tempo: {chordProgressionState.tempoValue} BPM
             </label>
             <input
               type="range"
               min="60"
-              max="180"
+              max="200"
+              step="5"
               value={chordProgressionState.tempoValue}
               onInput={handleTempoChange}
               class="tempo-slider w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
             <div class="flex justify-between text-xs text-gray-400 mt-1">
               <span>60</span>
-              <span>120</span>
-              <span>180</span>
+              <span>130</span>
+              <span>200</span>
             </div>
           </div>
 
           {/* Beats per Chord */}
-          <div class="beats-control">
+          <div class="beats-control p-3 rounded">
             <label class="block text-sm font-medium mb-2">
               Beats per Chord: {playbackState.beatsPerChordValue}
             </label>
@@ -136,6 +139,7 @@ export const TransportControls: Component = () => {
               type="range"
               min="1"
               max="8"
+              step="1"
               value={playbackState.beatsPerChordValue}
               onInput={handleBeatsPerChordChange}
               class="beats-slider w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
