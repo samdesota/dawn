@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal } from 'solid-js';
+import { Component, createSignal } from 'solid-js';
 import { uiState } from '../state/UIState';
 import type { KeyInfo } from '../state/KeyboardState';
 
@@ -10,28 +10,6 @@ interface KeyButtonProps {
 
 export const KeyButton: Component<KeyButtonProps> = (props) => {
   const [isPressed, setIsPressed] = createSignal(false);
-  const [animationClass, setAnimationClass] = createSignal('');
-
-  createEffect(() => {
-    // Add pulsing animation for highlighted chord tones
-    if (props.key.isHighlighted && props.key.chordRole && uiState.shouldShowAnimations) {
-      const intensity = getAnimationIntensity(props.key.chordRole);
-      setAnimationClass(`animate-pulse-${intensity}`);
-    } else {
-      setAnimationClass('');
-    }
-  });
-
-  const getAnimationIntensity = (role: string): string => {
-    switch (role) {
-      case 'root': return 'strong';
-      case 'third': return 'moderate';
-      case 'fifth': return 'subtle';
-      case 'seventh':
-      case 'extension': return 'gentle';
-      default: return 'subtle';
-    }
-  };
 
   const getKeyStyles = () => {
     const backgroundColor = uiState.getKeyBackgroundColor(
@@ -42,6 +20,17 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
 
     const textColor = uiState.getKeyTextColor();
 
+    // Z-index based on note type hierarchy
+    const getZIndex = (): number => {
+      switch (props.key.noteType) {
+        case 'chromatic': return 40; // Highest layer
+        case 'scale': return 30;
+        case 'pentatonic': return 20;
+        case 'triad': return 10; // Base layer
+        default: return 10;
+      }
+    };
+
     return {
       position: 'absolute' as const,
       left: `${props.key.position}px`,
@@ -49,32 +38,21 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
       height: `${props.key.height}px`,
       'background-color': backgroundColor,
       color: textColor,
+      'z-index': getZIndex(),
       transform: isPressed() ? 'scale(0.95)' : 'scale(1)',
       'box-shadow': isPressed()
         ? 'inset 0 2px 4px rgba(0,0,0,0.3)'
         : props.key.isHighlighted
-          ? '0 0 8px rgba(251, 191, 36, 0.5)'
+          ? '0 0 8px rgba(90, 73, 59, 0.4)'
           : '0 1px 3px rgba(0,0,0,0.2)',
       'border-radius': '4px',
       border: props.key.isHighlighted
-        ? '2px solid rgba(251, 191, 36, 0.7)'
+        ? '2px solid rgba(90, 73, 59, 0.6)'
         : '1px solid rgba(255,255,255,0.1)',
       transition: uiState.shouldShowAnimations
         ? 'all 0.1s ease-in-out, background-color 0.3s ease'
-        : 'none',
-      'z-index': getZIndex()
+        : 'none'
     };
-  };
-
-  const getZIndex = (): number => {
-    // Higher z-index for more important notes
-    switch (props.key.noteType) {
-      case 'triad': return 40;
-      case 'pentatonic': return 30;
-      case 'scale': return 20;
-      case 'chromatic': return 10;
-      default: return 10;
-    }
   };
 
   const handleMouseDown = (event: MouseEvent) => {
@@ -120,7 +98,7 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
 
   return (
     <button
-      class={`key-button select-none touch-none ${animationClass()}`}
+      class={`key-button select-none touch-none`}
       style={getKeyStyles()}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}

@@ -231,35 +231,18 @@ export const KeyboardLayout: Component = () => {
     return lastKey.position + lastKey.width + 20; // Add some padding
   };
 
-  const getKeyZIndex = (noteType: string) => {
-    // Higher z-index for non-triad keys so they appear on top of triad keys
-    // This creates the layered piano effect
-    switch (noteType) {
-      case 'chromatic':
-        return '40'; // Highest layer - chromatic notes on top
-      case 'scale':
-        return '30'; // Scale notes above pentatonic
-      case 'pentatonic':
-        return '20'; // Pentatonic notes above triads
-      case 'triad':
-        return '10'; // Base layer - triad keys at bottom
-      default:
-        return '10';
-    }
-  };
-
   return (
-    <div class="keyboard-layout w-full h-full overflow-hidden bg-black">
+    <div class="keyboard-layout w-full h-full overflow-hidden bg-black flex-1 flex flex-col">
       <div
         ref={keyboardContainer}
-        class="keyboard-container relative h-full overflow-x-auto overflow-y-hidden"
+        class="keyboard-container relative h-full overflow-x-auto overflow-y-hidden flex-1 flex flex-col"
         style={{
           width: '100%',
           'min-width': `${getTotalWidth()}px`
         }}
       >
         <div
-          class="keyboard-keys relative h-full"
+          class="keyboard-keys relative h-full flex-1"
           style={{
             width: `${getTotalWidth()}px`,
             height: '100%'
@@ -267,26 +250,19 @@ export const KeyboardLayout: Component = () => {
         >
           <For each={keyboardState.keys}>
             {(key) => (
-              <div
-                style={{
-                  position: 'absolute',
-                  'z-index': getKeyZIndex(key.noteType)
+              <KeyButton
+                key={key}
+                onPlay={(velocity) => {
+                  audioEngineState.resumeContext();
+                  audioEngineState.playNote(key, velocity);
+                  if (uiState.isRecordingValue) {
+                    uiState.addRecordedNote(`${key.note}${key.octave}`, velocity);
+                  }
                 }}
-              >
-                <KeyButton
-                  key={key}
-                  onPlay={(velocity) => {
-                    audioEngineState.resumeContext();
-                    audioEngineState.playNote(key, velocity);
-                    if (uiState.isRecordingValue) {
-                      uiState.addRecordedNote(`${key.note}${key.octave}`, velocity);
-                    }
-                  }}
-                  onStop={() => {
-                    audioEngineState.stopNote(key);
-                  }}
-                />
-              </div>
+                onStop={() => {
+                  audioEngineState.stopNote(key);
+                }}
+              />
             )}
           </For>
         </div>

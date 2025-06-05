@@ -14,7 +14,7 @@ export interface KeyInfo extends NoteInfo {
 export class KeyboardState {
   // Reactive state atoms
   public octaveRange = createAtom([3, 5] as [number, number]); // Start with 3 octaves
-  public keyWidth = createAtom(200); // Base key width in pixels
+  public keyWidth = createAtom(150); // Base key width in pixels
   public keyboardKeys = createAtom<KeyInfo[]>([]);
 
   // Note names including enharmonic equivalents
@@ -46,6 +46,12 @@ export class KeyboardState {
         keys.push(keyInfo);
       }
     }
+
+    // Add a final key returning to the root note
+    const rootNote = this.chromaticNotes[0];
+    const rootKeyInfo = this.createKeyInfo(this.createNoteInfo(rootNote, endOctave + 1));
+    keys.push(rootKeyInfo);
+
 
     // Apply the layered layout algorithm
     this.applyLayeredLayout(keys);
@@ -85,17 +91,17 @@ export class KeyboardState {
 
   private getKeyDimensions(noteType: 'triad' | 'pentatonic' | 'scale' | 'chromatic') {
     const baseWidth = this.keyWidth();
-    const baseHeight = 200; // Base height in pixels
+    const baseHeight = 300; // Base height in pixels
 
     switch (noteType) {
       case 'triad':
         return { width: baseWidth, height: baseHeight }; // Full height, base layer
       case 'pentatonic':
-        return { width: baseWidth * 0.25, height: baseHeight * 0.75 }; // 75% height, narrower
+        return { width: baseWidth * 0.3, height: baseHeight * 0.75 }; // 75% height, narrower
       case 'scale':
-        return { width: baseWidth * 0.25, height: baseHeight * 0.6 }; // 60% height, narrower
+        return { width: baseWidth * 0.3, height: baseHeight * 0.6 }; // 60% height, narrower
       case 'chromatic':
-        return { width: baseWidth * 0.25, height: baseHeight * 0.45 }; // 45% height, narrowest
+        return { width: baseWidth * 0.3, height: baseHeight * 0.45 }; // 45% height, narrowest
       default:
         return { width: baseWidth, height: baseHeight };
     }
@@ -237,11 +243,26 @@ export class KeyboardState {
       return aPos - bPos;
     });
 
-    // Calculate total width of the group (including small gaps between keys)
-    const keyGap = 1; // Small gap between non-triad keys
-    const totalGroupWidth = sortedKeys.reduce((sum, key, index) =>
-      sum + key.width + (index > 0 ? keyGap : 0), 0
-    );
+    // Calculate total width of the group with overlapping for chromatic notes
+    let totalGroupWidth = 0;
+    sortedKeys.forEach((key, index) => {
+      if (index === 0) {
+        // First key takes full width
+        totalGroupWidth += key.width;
+      } else {
+        // Subsequent keys: check if current or previous key is chromatic for overlap
+        const prevKey = sortedKeys[index - 1];
+        const shouldOverlap = key.noteType === 'chromatic' || prevKey.noteType === 'chromatic';
+
+        if (shouldOverlap) {
+          // 20% overlap means we only add 80% of the current key's width
+          totalGroupWidth += key.width * 0.8;
+        } else {
+          // Non-chromatic keys get small gap
+          totalGroupWidth += key.width + 1;
+        }
+      }
+    });
 
     // Determine the center point where the group should be positioned
     let centerPoint: number;
@@ -267,20 +288,54 @@ export class KeyboardState {
 
     sortedKeys.forEach((key, index) => {
       key.position = currentPosition;
-      currentPosition += key.width + (index < sortedKeys.length - 1 ? keyGap : 0);
+
+      if (index < sortedKeys.length - 1) {
+        // Calculate spacing to next key
+        const nextKey = sortedKeys[index + 1];
+        const shouldOverlap = key.noteType === 'chromatic' || nextKey.noteType === 'chromatic';
+
+        if (shouldOverlap) {
+          // 20% overlap: move by 80% of current key's width
+          currentPosition += key.width * 0.8;
+        } else {
+          // Non-chromatic keys get small gap
+          currentPosition += key.width + 1;
+        }
+      }
     });
   }
 
   public updateHighlighting() {
     const keys = this.keyboardKeys();
-    const updatedKeys = keys.map(key => ({
-      ...key,
-      noteType: chordProgressionState.getNoteType(key.note),
-      chordRole: chordProgressionState.getChordToneRole(key.note),
-      isHighlighted: chordProgressionState.isNoteInCurrentChord(key.note)
-    }));
+    let hasChanges = false;
 
-    this.keyboardKeys.set(updatedKeys);
+    const updatedKeys = keys.map(key => {
+      const newNoteType = chordProgressionState.getNoteType(key.note);
+      const newChordRole = chordProgressionState.getChordToneRole(key.note);
+      const newIsHighlighted = chordProgressionState.isNoteInCurrentChord(key.note);
+
+      // Only create a new object if something actually changed
+      if (key.noteType !== newNoteType ||
+          key.chordRole !== newChordRole ||
+          key.isHighlighted !== newIsHighlighted) {
+        hasChanges = true;
+        return {
+          ...key,
+          noteType: newNoteType,
+          chordRole: newChordRole,
+          isHighlighted: newIsHighlighted
+        };
+      }
+
+      // Return the same object if nothing changed
+      return key;
+    });
+
+    // Only update the atom if there were actual changes
+    if (hasChanges) {
+      console.log('updatedKeys', updatedKeys);
+      this.keyboardKeys.set(updatedKeys);
+    }
   }
 
   public findKeyByNote(note: string, octave: number): KeyInfo | undefined {

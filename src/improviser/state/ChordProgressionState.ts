@@ -132,18 +132,22 @@ export class ChordProgressionState {
 
   // Music theory helper methods
   public getNoteType(note: string): 'triad' | 'pentatonic' | 'scale' | 'chromatic' {
-    const currentChord = this.getCurrentChord();
-    if (!currentChord) return 'chromatic';
-
+    // Determine note type based on the song's key, not the current chord
     const key = this.currentKey();
-    const triadNotes = currentChord.notes;
+    const keyTriadNotes = this.getKeyTriadNotes(key); // I, iii, V chords of the key
     const pentatonicNotes = this.getPentatonicNotes(key);
     const scaleNotes = this.getScaleNotes(key);
 
-    if (triadNotes.includes(note)) return 'triad';
+    if (keyTriadNotes.includes(note)) return 'triad';
     if (pentatonicNotes.includes(note)) return 'pentatonic';
     if (scaleNotes.includes(note)) return 'scale';
     return 'chromatic';
+  }
+
+  private getKeyTriadNotes(key: string): string[] {
+    // Get the I, iii, V chord tones of the key (major triad of the key)
+    const majorTriadPattern = [0, 4, 7]; // Root, major third, perfect fifth
+    return this.generateNotesFromPattern(key, majorTriadPattern);
   }
 
   public getPentatonicNotes(key: string): string[] {

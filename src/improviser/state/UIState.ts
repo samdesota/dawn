@@ -272,13 +272,13 @@ export class UIState {
     const theme = this.preferences().keyboardTheme;
 
     if (isHighlighted && chordRole) {
-      // Highlighted chord tones with intensity hierarchy
+      // Highlighted chord tones with intensity hierarchy - warm gray tones with higher saturation
       switch (chordRole) {
-        case 'root': return '#fbbf24'; // Bright saturated gold
-        case 'third': return '#f59e0b'; // Medium gold
-        case 'fifth': return '#d97706'; // Muted gold
-        case 'seventh': return '#92400e'; // Pale gold
-        case 'extension': return '#92400e'; // Pale gold
+        case 'root': return '#4a3d2f'; // Dark gray with stronger warm amber tint
+        case 'third': return '#524335'; // Medium gray with stronger warm amber tint
+        case 'fifth': return '#5a493b'; // Lighter gray with stronger warm amber tint
+        case 'seventh': return '#48392d'; // Darker gray with stronger warm amber tint
+        case 'extension': return '#48392d'; // Darker gray with stronger warm amber tint
       }
     }
 

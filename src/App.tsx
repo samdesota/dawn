@@ -75,8 +75,8 @@ const App: Component = () => {
       // Only prevent context menu on keyboard and control elements
       const target = e.target as HTMLElement;
       if (target.closest('.keyboard-container') ||
-          target.closest('.key-button') ||
-          target.closest('.transport-controls')) {
+        target.closest('.key-button') ||
+        target.closest('.transport-controls')) {
         e.preventDefault();
       }
     };
@@ -149,65 +149,70 @@ const App: Component = () => {
       </header>
 
       {/* Main Content */}
-      <main class="app-main flex flex-col lg:flex-row min-h-[calc(100vh-80px)]">
+      <main class="app-main flex flex-col min-h-[calc(100vh-80px)]">
 
-        {/* Control Panel */}
-        <div class="control-panel w-full lg:w-1/3 xl:w-1/4 p-4 space-y-4 bg-gray-50 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700">
+        {/* Control Panel - Grid Layout */}
+        <div class="control-panel w-full p-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+          <div class="grid grid-cols-1 md:grid-cols-2  gap-4">
 
-          {/* Chord Display */}
-          <ChordDisplay />
-
-          {/* Song Selector */}
-          <SongSelector />
-
-          {/* Transport Controls */}
-          <TransportControls />
-
-          {/* Quick Settings */}
-          <div class="quick-settings bg-gray-700 p-4 rounded-lg shadow">
-            <h3 class="text-lg font-semibold mb-3">Quick Settings</h3>
-
-            <div class="setting-item mb-3">
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={uiState.preferencesValue.showChordRoles}
-                  onChange={(e) => uiState.updatePreference('showChordRoles', e.target.checked)}
-                  class="mr-2"
-                />
-                <span class="text-sm">Highlight Chord Tones</span>
-              </label>
+            {/* Song Selector */}
+            <div class="control-section">
+              <SongSelector />
             </div>
 
-            <div class="setting-item mb-3">
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={uiState.preferencesValue.showProgressBar}
-                  onChange={(e) => uiState.updatePreference('showProgressBar', e.target.checked)}
-                  class="mr-2"
-                />
-                <span class="text-sm">Show Progress Bar</span>
-              </label>
-            </div>
+            {/* Chord Display and Transport Controls */}
+            <div class="control-section flex-1 flex flex-col space-y-4">
+              <TransportControls />
 
-            <div class="setting-item">
-              <label class="block text-sm font-medium mb-1">Theme</label>
-              <select
-                value={uiState.preferencesValue.keyboardTheme}
-                onChange={(e) => uiState.updatePreference('keyboardTheme', e.target.value as 'light' | 'dark')}
-                class="w-full px-2 py-1 border rounded text-sm bg-white dark:bg-gray-600 dark:border-gray-500"
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
+              {/* Quick Settings */}
+              <div class="control-section flex-1 flex flex-col">
+                <div class="quick-settings bg-gray-700 p-4 rounded-lg shadow flex-1">
+                  <h3 class="text-lg font-semibold mb-3">Quick Settings</h3>
+
+                  <div class="setting-item mb-3">
+                    <label class="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={uiState.preferencesValue.showChordRoles}
+                        onChange={(e) => uiState.updatePreference('showChordRoles', e.target.checked)}
+                        class="mr-2"
+                      />
+                      <span class="text-sm">Highlight Chord Tones</span>
+                    </label>
+                  </div>
+
+                  <div class="setting-item mb-3">
+                    <label class="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={uiState.preferencesValue.showProgressBar}
+                        onChange={(e) => uiState.updatePreference('showProgressBar', e.target.checked)}
+                        class="mr-2"
+                      />
+                      <span class="text-sm">Show Progress Bar</span>
+                    </label>
+                  </div>
+
+                  <div class="setting-item">
+                    <label class="block text-sm font-medium mb-1">Theme</label>
+                    <select
+                      value={uiState.preferencesValue.keyboardTheme}
+                      onChange={(e) => uiState.updatePreference('keyboardTheme', e.target.value as 'light' | 'dark')}
+                      class="w-full px-2 py-1 border rounded text-sm bg-white dark:bg-gray-600 dark:border-gray-500"
+                    >
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Keyboard Area */}
-        <div class="keyboard-area flex-1 p-4 overflow-hidden">
-          <div class="keyboard-container h-full">
+        {/* Keyboard Area - Full Width */}
+        <div class="keyboard-area flex-1 p-4 overflow-hidden flex flex-col">
+          <div class="keyboard-container flex flex-col flex-1 w-full">
             <KeyboardLayout />
           </div>
         </div>
