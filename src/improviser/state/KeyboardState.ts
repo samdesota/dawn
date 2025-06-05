@@ -348,6 +348,14 @@ export class KeyboardState {
     );
   }
 
+  public getKeyAtCoordinates(x: number, y: number): KeyInfo | undefined {
+    return this.keyboardKeys().find(key => {
+      const withinX = x >= key.position && x <= key.position + key.width;
+      const withinY = y >= 0 && y <= key.height; // Assuming keys start at y=0
+      return withinX && withinY;
+    });
+  }
+
   public setOctaveRange(start: number, end: number) {
     this.octaveRange.set([start, end]);
     this.generateKeyboard();

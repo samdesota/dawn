@@ -134,8 +134,8 @@ export class ChordCompingState {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    // Stop any currently playing chord
-    audioEngineState.stopAllNotes();
+    // Only stop chord notes when actually disabling comping
+    audioEngineState.stopAllChordNotes();
   }
 
   private onStep() {
@@ -157,19 +157,31 @@ export class ChordCompingState {
     const currentChord = chordProgressionState.getCurrentChord();
     if (!currentChord) return;
 
-    // Stop any currently playing notes
-    audioEngineState.stopAllNotes();
-
     // Get chord voicing
     const chordNotes = this.getChordVoicing(currentChord.notes);
 
-    // Play each note in the chord
+    // Calculate note duration based on rhythm pattern
+    const bpm = chordProgressionState.tempoValue;
+    const sixteenthNoteDuration = (60 / bpm / 4); // Duration of one 16th note in seconds
+
+    // Set chord note duration - make it slightly longer than the beat to allow natural overlap
+    const noteDuration = sixteenthNoteDuration * 4.2; // Slightly longer than a quarter note
+
+    // Get current audio context time for precise scheduling
+    const audioContext = audioEngineState.getAudioContext;
+    if (!audioContext) return;
+
+    const now = audioContext.currentTime;
+
+    // Play each note in the chord with precise Web Audio scheduling
     chordNotes.forEach((noteInfo, index) => {
-      // Slight timing offset for more natural sound
-      setTimeout(() => {
-        const adjustedVelocity = velocity * this.volume() * (0.8 + Math.random() * 0.2); // Add slight velocity variation
-        audioEngineState.playNote(noteInfo, adjustedVelocity);
-      }, index * 10); // 10ms stagger between notes
+      const adjustedVelocity = velocity * this.volume() * (0.8 + Math.random() * 0.2); // Add slight velocity variation
+
+      // Calculate precise start time with slight stagger
+      const startTime = now + (index * 0.01); // 10ms stagger between notes
+
+      // Play the note with scheduled duration
+      audioEngineState.playChordNoteWithDuration(noteInfo, adjustedVelocity, startTime, noteDuration);
     });
   }
 
