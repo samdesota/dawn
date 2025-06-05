@@ -4,6 +4,7 @@ import { audioEngineState } from '../state/AudioEngineState';
 import { uiState } from '../state/UIState';
 import { KeyButton } from './KeyButton';
 import type { NoteInfo } from '../state/AudioEngineState';
+import { Key } from '@solid-primitives/keyed';
 
 export const KeyboardLayout: Component = () => {
   let keyboardContainer: HTMLDivElement | undefined;
@@ -118,7 +119,7 @@ export const KeyboardLayout: Component = () => {
 
   // Single touch event handler that processes all touch events declaratively
   const handleTouchEvent = (event: TouchEvent) => {
-    event.preventDefault();
+    event.preventDefault()
 
     // Resume audio context on first touch (required for iOS)
     audioEngineState.resumeContext();
@@ -128,6 +129,8 @@ export const KeyboardLayout: Component = () => {
 
     // Determine which notes should be playing based on current touches
     const activeNotes = determineActiveNotes(event.touches);
+
+    console.log('activeNotes', event, activeNotes);
 
     // Update the audio engine with the current set of notes that should be playing
     audioEngineState.setActiveKeyboardNotes(activeNotes);
@@ -192,23 +195,23 @@ export const KeyboardLayout: Component = () => {
             height: '100%'
           }}
         >
-          <For each={keyboardState.keys}>
+          <Key each={keyboardState.keys} by={(key) => key.note + key.octave}>
             {(key) => (
               <KeyButton
-                key={key}
+                key={key()}
                 onPlay={(velocity) => {
                   audioEngineState.resumeContext();
-                  audioEngineState.playKeyboardNote(key, velocity);
+                  audioEngineState.playKeyboardNote(key(), velocity);
                   if (uiState.isRecordingValue) {
-                    uiState.addRecordedNote(`${key.note}${key.octave}`, velocity);
+                    uiState.addRecordedNote(`${key().note}${key().octave}`, velocity);
                   }
                 }}
                 onStop={() => {
-                  audioEngineState.stopKeyboardNote(key);
+                  audioEngineState.stopKeyboardNote(key());
                 }}
               />
             )}
-          </For>
+          </Key>
         </div>
       </div>
     </div>

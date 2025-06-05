@@ -173,16 +173,7 @@ export class ChordCompingState {
 
     const now = audioContext.currentTime;
 
-    // Play each note in the chord with precise Web Audio scheduling
-    chordNotes.forEach((noteInfo, index) => {
-      const adjustedVelocity = velocity * this.volume() * (0.8 + Math.random() * 0.2); // Add slight velocity variation
-
-      // Calculate precise start time with slight stagger
-      const startTime = now + (index * 0.01); // 10ms stagger between notes
-
-      // Play the note with scheduled duration
-      audioEngineState.playChordNoteWithDuration(noteInfo, adjustedVelocity, startTime, noteDuration);
-    });
+    audioEngineState.playChord(chordNotes, velocity, noteDuration);
   }
 
   private getChordVoicing(chordNotes: string[]): NoteInfo[] {

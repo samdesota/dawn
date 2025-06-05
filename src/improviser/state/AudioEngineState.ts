@@ -31,11 +31,12 @@ class PlayingNote {
     attackTime: number,
     releaseTime: number,
     context: NoteContext,
-    noteKey: string
+    noteKey: string,
+    startTime?: number
   ) {
     this.audioContext = audioContext;
     this.context = context;
-    this.startTime = audioContext.currentTime;
+    this.startTime = startTime ?? audioContext.currentTime;
     this.noteKey = noteKey;
 
     // Create note-specific gain node
@@ -43,31 +44,30 @@ class PlayingNote {
     this.gainNode.connect(compressor);
 
     // Smooth exponential attack envelope to prevent clicks
-    const now = audioContext.currentTime;
     const safeVelocity = Math.min(velocity, 1.0);
     const baseGain = safeVelocity * 0.3;
 
     // Exponential attack over configurable time
-    this.gainNode.gain.setValueAtTime(0.0001, now); // Start very low to avoid clicks
-    this.gainNode.gain.exponentialRampToValueAtTime(baseGain, now + attackTime);
+    this.gainNode.gain.setValueAtTime(0.0001, this.startTime); // Start very low to avoid clicks
+    this.gainNode.gain.exponentialRampToValueAtTime(baseGain, this.startTime + attackTime);
 
     // Create sound based on instrument type
     switch (instrument) {
       case 'piano':
-        this.oscillators = this.createPianoSound(noteInfo.frequency, now);
+        this.oscillators = this.createPianoSound(noteInfo.frequency, this.startTime);
         break;
       case 'electric-piano':
-        this.oscillators = this.createElectricPianoSound(noteInfo.frequency, now);
+        this.oscillators = this.createElectricPianoSound(noteInfo.frequency, this.startTime);
         break;
       case 'synthesizer':
-        this.oscillators = this.createSynthSound(noteInfo.frequency, now);
+        this.oscillators = this.createSynthSound(noteInfo.frequency, this.startTime);
         break;
       default:
-        this.oscillators = this.createPianoSound(noteInfo.frequency, now);
+        this.oscillators = this.createPianoSound(noteInfo.frequency, this.startTime);
         break;
     }
 
-    console.log('PlayingNote created:', noteKey, 'oscillators:', this.oscillators.length);
+    console.log('PlayingNote created:', noteKey, 'oscillators:', this.oscillators.length, 'startTime:', this.startTime);
   }
 
   private createPianoSound(frequency: number, startTime: number): OscillatorNode[] {
@@ -154,6 +154,46 @@ class PlayingNote {
     oscillator.start(startTime);
 
     return [oscillator];
+  }
+
+  public scheduleStop(stopTime: number, releaseTime: number): void {
+    if (!this.isActive || this.isReleasing) {
+      return; // Already stopped or stopping
+    }
+
+
+    console.log('PlayingNote scheduling stop:', this.noteKey, 'at time:', stopTime);
+
+    try {
+      // Schedule smooth exponential release envelope at the specified time
+      this.gainNode.gain.exponentialRampToValueAtTime(0.0001, stopTime + releaseTime);
+
+      // Schedule oscillator stops after release
+      this.oscillators.forEach((oscillator, index) => {
+        try {
+          oscillator.stop(stopTime + releaseTime + 0.01); // Stop slightly after release completes
+        } catch (error) {
+          console.warn(`Error scheduling oscillator ${index} stop for note ${this.noteKey}:`, error);
+        }
+      });
+
+      // Calculate when cleanup should happen and schedule it
+      const cleanupDelay = Math.max(0, (stopTime + releaseTime + 0.02 - this.audioContext.currentTime) * 1000);
+      this.cleanupTimeout = window.setTimeout(() => {
+        this.cleanup();
+      }, cleanupDelay);
+
+      // Mark as releasing when the scheduled time arrives
+      const releaseDelay = Math.max(0, (stopTime - this.audioContext.currentTime) * 1000);
+      setTimeout(() => {
+        this.isReleasing = true;
+      }, releaseDelay);
+
+    } catch (error) {
+      console.error(`Error scheduling stop for note ${this.noteKey}:`, error);
+      // Force immediate cleanup on error
+      this.cleanup();
+    }
   }
 
   public stop(releaseTime: number): void {
@@ -384,8 +424,8 @@ export class AudioEngineState {
   }
 
   // Internal method for playing notes with context awareness
-  private playNoteWithContext(noteInfo: NoteInfo, velocity: number = 1, context: NoteContext = 'general') {
-    console.log('playNoteWithContext called:', noteInfo.note + noteInfo.octave, 'velocity:', velocity, 'context:', context);
+  private playNoteWithContext(noteInfo: NoteInfo, velocity: number = 1, context: NoteContext = 'general', startTime?: number) {
+    console.log('playNoteWithContext called:', noteInfo.note + noteInfo.octave, 'velocity:', velocity, 'context:', context, 'startTime:', startTime);
 
     if (!this.audioContext || !this.compressor) {
       console.warn('Audio context or compressor not available');
@@ -413,7 +453,8 @@ export class AudioEngineState {
         this.attackTime,
         this.releaseTime,
         context,
-        noteKey
+        noteKey,
+        startTime
       );
 
       // Store active note
@@ -483,18 +524,44 @@ export class AudioEngineState {
       return;
     }
 
-    // Play each note in the chord using chord context to avoid keyboard conflicts
+    const now = this.audioContext.currentTime;
+
+    // Play each note in the chord using Web Audio scheduling
     noteInfos.forEach((noteInfo, index) => {
-      setTimeout(() => {
-        this.playChordNote(noteInfo, velocity);
+      const noteStartTime = now + (index * 0.01); // 10ms stagger between notes
+
+      // Stop existing note in chord context if playing
+      this.stopNoteWithContext(noteInfo, 'chord');
+
+      // Create new PlayingNote instance with scheduled start time
+      try {
+        const noteKey = this.getNoteKey(noteInfo, 'chord');
+        const playingNote = new PlayingNote(
+          this.audioContext!,
+          this.compressor!,
+          noteInfo,
+          velocity,
+          this.instrument(),
+          this.attackTime,
+          this.releaseTime,
+          'chord',
+          noteKey,
+          noteStartTime
+        );
+
+        // Store active note
+        this.activeNotes.set(noteKey, playingNote);
 
         // Schedule note stop if duration is specified
         if (duration > 0) {
-          setTimeout(() => {
-            this.stopChordNote(noteInfo);
-          }, duration * 1000);
+          const stopTime = noteStartTime + duration;
+          playingNote.scheduleStop(stopTime, this.releaseTime);
         }
-      }, index * 10); // 10ms stagger between notes
+
+        console.log('Chord note scheduled:', noteKey, 'start:', noteStartTime, 'stop:', duration > 0 ? noteStartTime + duration : 'none');
+      } catch (error) {
+        console.error('Error creating chord note:', error);
+      }
     });
   }
 

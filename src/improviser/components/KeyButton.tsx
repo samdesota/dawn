@@ -100,9 +100,6 @@ export const KeyButton: Component<KeyButtonProps> = (props) => {
     <button
       class={`key-button select-none touch-none`}
       style={getKeyStyles()}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
       aria-label={`${props.key.note}${props.key.octave} - ${props.key.noteType} note`}
       data-note={props.key.note}
       data-octave={props.key.octave}

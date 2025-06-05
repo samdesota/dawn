@@ -163,49 +163,6 @@ const App: Component = () => {
             {/* Chord Display and Transport Controls */}
             <div class="control-section flex-1 flex flex-col space-y-4">
               <TransportControls />
-
-              {/* Quick Settings */}
-              <div class="control-section flex-1 flex flex-col">
-                <div class="quick-settings bg-gray-700 p-4 rounded-lg shadow flex-1">
-                  <h3 class="text-lg font-semibold mb-3">Quick Settings</h3>
-
-                  <div class="setting-item mb-3">
-                    <label class="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={uiState.preferencesValue.showChordRoles}
-                        onChange={(e) => uiState.updatePreference('showChordRoles', e.target.checked)}
-                        class="mr-2"
-                      />
-                      <span class="text-sm">Highlight Chord Tones</span>
-                    </label>
-                  </div>
-
-                  <div class="setting-item mb-3">
-                    <label class="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={uiState.preferencesValue.showProgressBar}
-                        onChange={(e) => uiState.updatePreference('showProgressBar', e.target.checked)}
-                        class="mr-2"
-                      />
-                      <span class="text-sm">Show Progress Bar</span>
-                    </label>
-                  </div>
-
-                  <div class="setting-item">
-                    <label class="block text-sm font-medium mb-1">Theme</label>
-                    <select
-                      value={uiState.preferencesValue.keyboardTheme}
-                      onChange={(e) => uiState.updatePreference('keyboardTheme', e.target.value as 'light' | 'dark')}
-                      class="w-full px-2 py-1 border rounded text-sm bg-white dark:bg-gray-600 dark:border-gray-500"
-                    >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
