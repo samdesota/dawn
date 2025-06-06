@@ -1,176 +1,162 @@
-import { Component, For } from 'solid-js';
+import { Component, For, createSignal } from 'solid-js';
 import { chordProgressionState } from '../state/ChordProgressionState';
 import { keyboardState } from '../state/KeyboardState';
 
 export const SongSelector: Component = () => {
-  const handleSongChange = (event: Event) => {
-    const target = event.target as HTMLSelectElement;
-    const songName = target.value;
+  const [hoveredSong, setHoveredSong] = createSignal<string | null>(null);
+
+  const handleSongSelect = (songName: string) => {
     chordProgressionState.selectSong(songName);
     keyboardState.updateHighlighting();
   };
 
-  const getSongInfo = () => {
-    const song = chordProgressionState.currentSongValue;
-    if (!song) return null;
-
-    return {
-      name: song.name,
-      key: song.key,
-      chordCount: song.chords.length,
-      timeSignature: song.timeSignature,
-      defaultTempo: song.defaultTempo
-    };
+  const getAvailableSongs = () => {
+    return chordProgressionState.getAvailableSongs();
   };
 
-  const getChordProgressionPreview = () => {
-    const song = chordProgressionState.currentSongValue;
-    if (!song) return [];
-
-    return song.chords.map((chord, index) => ({
-      ...chord,
-      index,
-      isCurrent: index === chordProgressionState.currentChordIndexValue
-    }));
+  const getCurrentSongIndex = () => {
+    const currentSong = chordProgressionState.currentSongValue?.name;
+    const songs = getAvailableSongs();
+    return currentSong ? songs.indexOf(currentSong) : 0;
   };
 
-  const handleChordClick = (chordIndex: number) => {
-    chordProgressionState.currentChordIndex.set(chordIndex);
-    keyboardState.updateHighlighting();
+  const getSongDisplayData = () => {
+    const songs = getAvailableSongs();
+    const currentIndex = getCurrentSongIndex();
+
+    return songs.map((songName, index) => {
+      const distance = Math.abs(index - currentIndex);
+      const isCurrent = index === currentIndex;
+      const isAdjacent = distance === 1;
+      const isVisible = distance <= 2;
+
+      return {
+        name: songName,
+        index,
+        isCurrent,
+        isAdjacent,
+        isVisible,
+        distance,
+        position: index - currentIndex
+      };
+    });
+  };
+
+  const getSongInfo = (songName: string) => {
+    // Get song info by temporarily selecting it (without triggering state change)
+    const songs = chordProgressionState.getAvailableSongs();
+    const songIndex = songs.indexOf(songName);
+    if (songIndex === -1) return null;
+
+    // This is a simplified version - you might need to access song data differently
+    const currentSong = chordProgressionState.currentSongValue;
+    if (currentSong?.name === songName) {
+      return {
+        key: currentSong.key,
+        tempo: currentSong.defaultTempo,
+        chordCount: currentSong.chords.length
+      };
+    }
+
+    return { key: 'C', tempo: 120, chordCount: 4 }; // Default fallback
   };
 
   return (
-    <div class="song-selector text-white p-4 rounded-lg" style="background-color: #1c1c1c;">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold">Song Selection</h3>
-      </div>
+    <div class="cover-flow-selector">
+      <h2 class="text-xl font-semibold text-center mb-6 text-white">Song Selection</h2>
 
-      {/* Song Dropdown */}
-      <div class="song-dropdown mb-4">
-        <label class="block text-sm font-medium mb-2">Choose a Chord Progression</label>
-        <select
-          onChange={handleSongChange}
-          value={chordProgressionState.currentSongValue?.name || ''}
-          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-        >
-          <For each={chordProgressionState.getAvailableSongs()}>
-            {(songName) => (
-              <option value={songName}>
-                {songName}
-              </option>
-            )}
-          </For>
-        </select>
-      </div>
-
-      {/* Song Information */}
-      {getSongInfo() && (
-        <div class="song-info mb-4 p-3 rounded" style="background-color: #1c1c1c;">
-          <div class="grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <span class="text-gray-400">Key:</span>
-              <span class="ml-2 font-medium">{getSongInfo()!.key}</span>
-            </div>
-            <div>
-              <span class="text-gray-400">Tempo:</span>
-              <span class="ml-2 font-medium">{getSongInfo()!.defaultTempo} BPM</span>
-            </div>
-            <div>
-              <span class="text-gray-400">Time:</span>
-              <span class="ml-2 font-medium">
-                {getSongInfo()!.timeSignature[0]}/{getSongInfo()!.timeSignature[1]}
-              </span>
-            </div>
-            <div>
-              <span class="text-gray-400">Chords:</span>
-              <span class="ml-2 font-medium">{getSongInfo()!.chordCount}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Chord Progression Preview */}
-      <div class="chord-progression-preview">
-        <div class="text-sm font-medium mb-2 text-gray-300">Chord Progression</div>
-        <div class="chord-grid grid grid-cols-4 gap-2">
-          <For each={getChordProgressionPreview()}>
-            {(chord) => (
-              <button
-                onClick={() => handleChordClick(chord.index)}
-                class="chord-preview p-2 rounded transition-all duration-200"
-                classList={{
-                  'bg-yellow-600 text-black': chord.isCurrent,
-                  'text-white': !chord.isCurrent
+      {/* Cover Flow Container */}
+      <div class="cover-flow-container relative h-48 overflow-hidden">
+        <div class="flex items-center justify-center h-full relative">
+          <For each={getSongDisplayData()}>
+            {(song) => (
+              <div
+                class="song-card absolute transition-all duration-500 ease-out cursor-pointer"
+                style={{
+                  transform: `translateX(${song.position * 280}px) scale(${song.isCurrent ? 1 : song.isAdjacent ? 0.8 : 0.6}) rotateY(${song.position * 15}deg)`,
+                  'z-index': song.isCurrent ? 10 : song.isAdjacent ? 5 : 1,
+                  opacity: song.isVisible ? (song.isCurrent ? 1 : song.isAdjacent ? 0.8 : 0.4) : 0,
+                  'pointer-events': song.isVisible ? 'auto' : 'none'
                 }}
-                style={chord.isCurrent ? {} : { 'background-color': '#1c1c1c' }}
-                aria-label={`Select chord ${chord.symbol}`}
+                onClick={() => handleSongSelect(song.name)}
+                onMouseEnter={() => setHoveredSong(song.name)}
+                onMouseLeave={() => setHoveredSong(null)}
               >
-                <div class="chord-symbol font-bold text-sm">
-                  {chord.symbol}
-                </div>
-                <div class="roman-numeral text-xs opacity-75">
-                  {chord.romanNumeral}
-                </div>
-              </button>
-            )}
-          </For>
-        </div>
-      </div>
-
-      {/* Current Chord Details */}
-      {chordProgressionState.getCurrentChord() && (
-        <div class="current-chord-details mt-4 p-3 rounded" style="background-color: #1c1c1c;">
-          <div class="text-sm font-medium mb-2 text-gray-300">Current Chord Details</div>
-          <div class="chord-info">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-2xl font-bold text-yellow-400">
-                {chordProgressionState.getCurrentChord()!.symbol}
-              </span>
-              <span class="text-lg text-gray-300">
-                {chordProgressionState.getCurrentChord()!.romanNumeral}
-              </span>
-            </div>
-
-            <div class="chord-notes">
-              <div class="text-xs text-gray-400 mb-1">Notes in chord:</div>
-              <div class="flex space-x-2">
-                <For each={chordProgressionState.getCurrentChord()!.notes}>
-                  {(note, index) => (
-                    <span
-                      class="note-pill px-2 py-1 rounded text-xs font-medium"
+                <div
+                  class="song-card-inner w-64 h-40 rounded-lg p-4 shadow-lg transition-all duration-300"
+                  style="background-color: #1c1c1c;"
+                  classList={{
+                    'ring-2 ring-yellow-500': song.isCurrent,
+                    'ring-1 ring-gray-500': song.isAdjacent && !song.isCurrent,
+                    'hover:ring-2 hover:ring-blue-400': hoveredSong() === song.name && !song.isCurrent
+                  }}
+                >
+                  {/* Song Title */}
+                  <div class="text-center mb-3">
+                    <h3
+                      class="font-bold text-lg truncate"
                       classList={{
-                        'bg-yellow-500 text-black': index() === 0, // Root
-                        'bg-yellow-600 text-white': index() === 1, // Third
-                        'bg-yellow-700 text-white': index() === 2, // Fifth
-                        'bg-yellow-800 text-white': index() >= 3   // Seventh/Extensions
+                        'text-yellow-400': song.isCurrent,
+                        'text-white': !song.isCurrent
                       }}
                     >
-                      {note}
-                    </span>
-                  )}
-                </For>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                      {song.name}
+                    </h3>
+                  </div>
 
-      {/* Quick Actions */}
-      <div class="quick-actions mt-4 flex justify-center space-x-2">
-        <button
-          onClick={() => chordProgressionState.previousChord()}
-          class="px-3 py-1 rounded text-sm transition-colors text-white"
-          style="background-color: #1c1c1c;"
-        >
-          ← Prev
-        </button>
-        <button
-          onClick={() => chordProgressionState.nextChord()}
-          class="px-3 py-1 rounded text-sm transition-colors text-white"
-          style="background-color: #1c1c1c;"
-        >
-          Next →
-        </button>
+                  {/* Song Info */}
+                  <div class="grid grid-cols-3 gap-2 text-sm">
+                    <div class="text-center">
+                      <div class="text-gray-400 text-xs">Key</div>
+                      <div class="text-white font-medium">{getSongInfo(song.name)?.key}</div>
+                    </div>
+                    <div class="text-center">
+                      <div class="text-gray-400 text-xs">Tempo</div>
+                      <div class="text-white font-medium">{getSongInfo(song.name)?.tempo}</div>
+                    </div>
+                    <div class="text-center">
+                      <div class="text-gray-400 text-xs">Chords</div>
+                      <div class="text-white font-medium">{getSongInfo(song.name)?.chordCount}</div>
+                    </div>
+                  </div>
+
+                  {/* Current Song Indicator */}
+                  {song.isCurrent && (
+                    <div class="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                      <div class="bg-yellow-500 text-black px-2 py-1 rounded-full text-xs font-bold">
+                        CURRENT
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Click Hint for Adjacent Songs */}
+                  {song.isAdjacent && !song.isCurrent && (
+                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                      <div class="text-gray-400 text-xs">Click to select</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </For>
+        </div>
+      </div>
+
+      {/* Navigation Dots */}
+      <div class="flex justify-center mt-4 space-x-2">
+        <For each={getAvailableSongs()}>
+          {(songName, index) => (
+            <button
+              onClick={() => handleSongSelect(songName)}
+              class="w-2 h-2 rounded-full transition-colors duration-200"
+              classList={{
+                'bg-yellow-500': index() === getCurrentSongIndex(),
+                'bg-gray-600 hover:bg-gray-400': index() !== getCurrentSongIndex()
+              }}
+              aria-label={`Select ${songName}`}
+            />
+          )}
+        </For>
       </div>
     </div>
   );

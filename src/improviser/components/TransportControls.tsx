@@ -64,34 +64,35 @@ export const TransportControls: Component = () => {
   };
 
   return (
-    <div class="transport-controls-container space-y-4">
-      {/* Main Transport Controls */}
-      <div class="transport-controls text-white p-4 rounded-lg" style="background-color: #1c1c1c;">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Transport</h3>
+    <div class="transport-sidebar flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-4">
 
-          <div class="transport-buttons flex items-center space-x-2">
+      {/* Transport Controls */}
+      <div class="transport-section flex-1 p-4 rounded-lg" style="background-color: #1c1c1c;">
+        <h3 class="text-lg font-semibold text-white mb-4">Transport</h3>
+
+        {/* Main Transport Buttons */}
+        <div class="transport-buttons space-y-3 mb-4">
+          <button
+            onClick={handlePlayPause}
+            class="w-full px-4 py-3 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-medium transition-colors text-black"
+            aria-label={getPlayPauseLabel()}
+          >
+            <span class="mr-2">{getPlayPauseIcon()}</span>
+            {getPlayPauseLabel()}
+          </button>
+
+          <div class="flex space-x-2">
             <button
               onClick={handlePreviousChord}
-              class="btn-transport px-3 py-2 rounded transition-colors text-white"
-              style="background-color: #1c1c1c;"
+              class="flex-1 px-3 py-2 rounded transition-colors text-white hover:bg-gray-600"
               aria-label="Previous chord"
             >
-              ⏮️
-            </button>
-
-            <button
-              onClick={handlePlayPause}
-              class="btn-play-pause px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded font-medium transition-colors"
-              aria-label={getPlayPauseLabel()}
-            >
-              <span class="mr-2">{getPlayPauseIcon()}</span>
-              {getPlayPauseLabel()}
+              ⏮️ Prev
             </button>
 
             <button
               onClick={handleStop}
-              class="btn-stop px-3 py-2 bg-red-600 hover:bg-red-500 rounded transition-colors"
+              class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded transition-colors text-white"
               aria-label="Stop"
             >
               ⏹️
@@ -99,109 +100,111 @@ export const TransportControls: Component = () => {
 
             <button
               onClick={handleNextChord}
-              class="btn-transport px-3 py-2 rounded transition-colors text-white"
-              style="background-color: #1c1c1c;"
+              class="flex-1 px-3 py-2 rounded transition-colors text-white hover:bg-gray-600"
               aria-label="Next chord"
             >
-              ⏭️
+              Next ⏭️
             </button>
           </div>
         </div>
 
-        <div class="tempo-beats-controls grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* Tempo Control */}
-          <div class="tempo-control p-3 rounded">
-            <label class="block text-sm font-medium mb-2">
-              Tempo: {chordProgressionState.tempoValue} BPM
-            </label>
-            <input
-              type="range"
-              min="60"
-              max="200"
-              step="5"
-              value={chordProgressionState.tempoValue}
-              onInput={handleTempoChange}
-              class="tempo-slider w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            />
-            <div class="flex justify-between text-xs text-gray-400 mt-1">
-              <span>60</span>
-              <span>130</span>
-              <span>200</span>
+        {/* Status Indicator */}
+        <div class="status-info text-center text-sm">
+          {playbackState.isPlaying && (
+            <div class="flex items-center justify-center space-x-2 text-green-400">
+              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Playing</span>
             </div>
-          </div>
+          )}
+          {playbackState.isPaused && (
+            <div class="flex items-center justify-center space-x-2 text-yellow-400">
+              <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <span>Paused</span>
+            </div>
+          )}
+          {playbackState.isStopped && (
+            <div class="flex items-center justify-center space-x-2 text-gray-400">
+              <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+              <span>Stopped</span>
+            </div>
+          )}
+        </div>
+      </div>
 
-          {/* Beats per Chord */}
-          <div class="beats-control p-3 rounded">
-            <label class="block text-sm font-medium mb-2">
-              Beats per Chord: {playbackState.beatsPerChordValue}
-            </label>
-            <input
-              type="range"
-              min="1"
-              max="8"
-              step="1"
-              value={playbackState.beatsPerChordValue}
-              onInput={handleBeatsPerChordChange}
-              class="beats-slider w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            />
-            <div class="flex justify-between text-xs text-gray-400 mt-1">
-              <span>1</span>
-              <span>4</span>
-              <span>8</span>
-            </div>
+      {/* Tempo & Settings */}
+      <div class="settings-section flex-1 p-4 rounded-lg" style="background-color: #1c1c1c;">
+        <h3 class="text-lg font-semibold text-white mb-4">Settings</h3>
+
+        {/* Tempo Control */}
+        <div class="tempo-control mb-4">
+          <label class="block text-sm font-medium mb-2 text-white">
+            Tempo: {chordProgressionState.tempoValue} BPM
+          </label>
+          <input
+            type="range"
+            min="60"
+            max="200"
+            step="5"
+            value={chordProgressionState.tempoValue}
+            onInput={handleTempoChange}
+            class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+          />
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>60</span>
+            <span>130</span>
+            <span>200</span>
           </div>
         </div>
 
-        {/* Transport Options */}
-        <div class="transport-options flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
-          <div class="flex items-center space-x-4">
-            <label class="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={playbackState.isAutoAdvanceValue}
-                onChange={toggleAutoAdvance}
-                class="form-checkbox h-4 w-4 text-yellow-600 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500"
-              />
-              <span class="text-sm">Auto-advance chords</span>
-            </label>
-
-            <label class="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={playbackState.isMetronomeEnabledValue}
-                onChange={toggleMetronome}
-                class="form-checkbox h-4 w-4 text-yellow-600 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500"
-              />
-              <span class="text-sm">Metronome</span>
-            </label>
+        {/* Beats per Chord */}
+        <div class="beats-control mb-4">
+          <label class="block text-sm font-medium mb-2 text-white">
+            Beats per Chord: {playbackState.beatsPerChordValue}
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="8"
+            step="1"
+            value={playbackState.beatsPerChordValue}
+            onInput={handleBeatsPerChordChange}
+            class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+          />
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>1</span>
+            <span>4</span>
+            <span>8</span>
           </div>
+        </div>
 
-          {/* Current Status */}
-          <div class="status-info text-sm text-gray-400">
-            {playbackState.isPlaying && (
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span>Playing</span>
-              </div>
-            )}
-            {playbackState.isPaused && (
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span>Paused</span>
-              </div>
-            )}
-            {playbackState.isStopped && (
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
-                <span>Stopped</span>
-              </div>
-            )}
-          </div>
+        {/* Options */}
+        <div class="options space-y-3">
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={playbackState.isAutoAdvanceValue}
+              onChange={toggleAutoAdvance}
+              class="form-checkbox h-4 w-4 text-yellow-600 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500"
+            />
+            <span class="text-sm text-white">Auto-advance chords</span>
+          </label>
+
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={playbackState.isMetronomeEnabledValue}
+              onChange={toggleMetronome}
+              class="form-checkbox h-4 w-4 text-yellow-600 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500"
+            />
+            <span class="text-sm text-white">Metronome</span>
+          </label>
         </div>
       </div>
 
       {/* Chord Comping Controls */}
-      <ChordCompingControls />
+      <div class="flex-1">
+        <ChordCompingControls />
+      </div>
     </div>
   );
 };
