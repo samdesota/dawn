@@ -1,6 +1,7 @@
 import { createAtom } from '../../state/atom';
 import { chordProgressionState } from './ChordProgressionState';
 import { audioEngineState, NoteInfo } from './AudioEngineState';
+import * as Tone from 'tone';
 
 export interface RhythmPattern {
   name: string;
@@ -68,8 +69,8 @@ export class ChordCompingState {
     }
   ];
 
-  // Timing control
-  private intervalId: number | null = null;
+  // Tone.Transport event ID for cleanup
+  private compingEventId: number | null = null;
   private currentStep = 0;
 
   constructor() {
@@ -118,27 +119,36 @@ export class ChordCompingState {
   }
 
   private startComping() {
-    this.stopComping(); // Clear any existing timer
+    this.stopComping(); // Clear any existing event
 
-    const bpm = chordProgressionState.tempoValue;
-    const sixteenthNoteInterval = (60 / bpm / 4) * 1000; // 16th notes in milliseconds
+    // Set transport BPM
+    Tone.getTransport().bpm.value = chordProgressionState.tempoValue;
 
     this.currentStep = 0;
-    this.intervalId = window.setInterval(() => {
-      this.onStep();
-    }, sixteenthNoteInterval);
+
+    // Schedule repeating 16th note event
+    this.compingEventId = Tone.getTransport().scheduleRepeat((time) => {
+      this.onStep(time);
+    }, "16n"); // 16th note timing
+
+    // Start transport if not already running
+    if (Tone.getTransport().state !== "started") {
+      Tone.getTransport().start();
+    }
+
+    console.log('Chord comping started with Tone.Transport at BPM:', Tone.getTransport().bpm.value);
   }
 
   private stopComping() {
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.compingEventId !== null) {
+      Tone.getTransport().clear(this.compingEventId);
+      this.compingEventId = null;
     }
     // Only stop chord notes when actually disabling comping
     audioEngineState.stopAllChordNotes();
   }
 
-  private onStep() {
+  private onStep(time: number) {
     const pattern = this.getCurrentPattern();
     if (!pattern) return;
 
@@ -147,13 +157,13 @@ export class ChordCompingState {
     const velocity = pattern.velocity[stepIndex];
 
     if (shouldPlay && velocity > 0) {
-      this.playCurrentChord(velocity);
+      this.playCurrentChord(velocity, time);
     }
 
     this.currentStep++;
   }
 
-  private playCurrentChord(velocity: number) {
+  private playCurrentChord(velocity: number, time: number) {
     const currentChord = chordProgressionState.getCurrentChord();
     if (!currentChord) return;
 
@@ -167,13 +177,11 @@ export class ChordCompingState {
     // Set chord note duration - make it slightly longer than the beat to allow natural overlap
     const noteDuration = sixteenthNoteDuration * 4.2; // Slightly longer than a quarter note
 
-    // Get current audio context time for precise scheduling
-    const audioContext = audioEngineState.getAudioContext;
-    if (!audioContext) return;
+    // Apply comping volume
+    const adjustedVelocity = velocity * this.volume();
 
-    const now = audioContext.currentTime;
-
-    audioEngineState.playChord(chordNotes, velocity, noteDuration);
+    // Use scheduled time from Tone.Transport for precise timing
+    audioEngineState.playChord(chordNotes, adjustedVelocity, noteDuration, time);
   }
 
   private getChordVoicing(chordNotes: string[]): NoteInfo[] {
@@ -247,7 +255,12 @@ export class ChordCompingState {
   }
 
   public syncWithTempo() {
+    // Update Tone.Transport BPM
+    Tone.getTransport().bpm.value = chordProgressionState.tempoValue;
+    
     // Restart comping with current tempo if enabled
+    // Note: With Tone.Transport, tempo changes are handled automatically
+    // but we may want to restart to reset the pattern phase
     if (this.isEnabled()) {
       this.stopComping();
       this.startComping();

@@ -1,6 +1,7 @@
 import { createAtom } from '../../state/atom';
 import { chordProgressionState } from './ChordProgressionState';
 import { keyboardState } from './KeyboardState';
+import * as Tone from 'tone';
 
 export type PlaybackMode = 'stopped' | 'playing' | 'paused';
 
@@ -12,13 +13,31 @@ export class PlaybackState {
   public isMetronomeEnabled = createAtom(false);
   public isAutoAdvance = createAtom(true); // Auto-advance chords
 
+  // Tone.js metronome synth
+  private metronome: Tone.MembraneSynth | null = null;
+
+  // Tone.Transport event IDs for cleanup
+  private beatEventId: number | null = null;
+
   // Timing control
-  private intervalId: number | null = null;
-  private startTime: number = 0;
-  private pausedTime: number = 0;
+  private pausedBeat: number = 0;
 
   constructor() {
-    // Initialize timing
+    // Create metronome synth
+    this.metronome = new Tone.MembraneSynth({
+      pitchDecay: 0.05,
+      octaves: 4,
+      oscillator: {
+        type: 'sine',
+      },
+      envelope: {
+        attack: 0.001,
+        decay: 0.1,
+        sustain: 0,
+        release: 0.1,
+      },
+      volume: -10,
+    }).toDestination();
   }
 
   public play() {
@@ -34,16 +53,23 @@ export class PlaybackState {
   public pause() {
     if (this.mode() === 'playing') {
       this.mode.set('paused');
-      this.pausedTime = Date.now() - this.startTime;
+      this.pausedBeat = this.currentBeat();
       this.stopTimer();
+      
+      // Pause Tone.Transport
+      Tone.getTransport().pause();
     }
   }
 
   public stop() {
     this.mode.set('stopped');
     this.currentBeat.set(0);
-    this.pausedTime = 0;
+    this.pausedBeat = 0;
     this.stopTimer();
+
+    // Stop and reset Tone.Transport
+    Tone.getTransport().stop();
+    Tone.getTransport().position = 0;
 
     // Reset chord progression to beginning
     chordProgressionState.currentChordIndex.set(0);
@@ -52,35 +78,52 @@ export class PlaybackState {
 
   private start() {
     this.mode.set('playing');
-    this.startTime = Date.now() - this.pausedTime;
+    
+    // Set transport BPM
+    Tone.getTransport().bpm.value = chordProgressionState.tempoValue;
+    
+    // If starting from paused state, restore beat counter
+    if (this.pausedBeat > 0) {
+      this.currentBeat.set(this.pausedBeat);
+    }
+    
     this.startTimer();
   }
 
   private resume() {
     this.mode.set('playing');
-    this.startTime = Date.now() - this.pausedTime;
-    this.startTimer();
+    
+    // Resume Tone.Transport
+    Tone.getTransport().start();
   }
 
   private startTimer() {
     this.stopTimer(); // Clear any existing timer
 
-    const bpm = chordProgressionState.tempoValue;
-    const beatInterval = (60 / bpm) * 1000; // Convert BPM to milliseconds per beat
+    // Set transport BPM
+    Tone.getTransport().bpm.value = chordProgressionState.tempoValue;
 
-    this.intervalId = window.setInterval(() => {
-      this.onBeat();
-    }, beatInterval);
+    // Schedule repeating quarter note (beat) event
+    this.beatEventId = Tone.getTransport().scheduleRepeat((time) => {
+      this.onBeat(time);
+    }, "4n"); // Quarter notes
+
+    // Start transport if not already running
+    if (Tone.getTransport().state !== "started") {
+      Tone.getTransport().start();
+    }
+
+    console.log('Playback started with Tone.Transport at BPM:', Tone.getTransport().bpm.value);
   }
 
   private stopTimer() {
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.beatEventId !== null) {
+      Tone.getTransport().clear(this.beatEventId);
+      this.beatEventId = null;
     }
   }
 
-  private onBeat() {
+  private onBeat(time: number) {
     const currentBeat = this.currentBeat();
     const nextBeat = currentBeat + 1;
 
@@ -94,7 +137,7 @@ export class PlaybackState {
 
     // Play metronome if enabled
     if (this.isMetronomeEnabled()) {
-      this.playMetronomeClick(nextBeat % this.beatsPerChord() === 1);
+      this.playMetronomeClick(nextBeat % this.beatsPerChord() === 1, time);
     }
   }
 
@@ -103,30 +146,17 @@ export class PlaybackState {
     keyboardState.updateHighlighting();
   }
 
-  private playMetronomeClick(isDownbeat: boolean) {
-    // Create a simple metronome click using Web Audio API
-    // This is a basic implementation - could be enhanced with better sounds
+  private playMetronomeClick(isDownbeat: boolean, time: number) {
+    if (!this.metronome) return;
+
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
       // Different frequencies for downbeat vs regular beat
-      oscillator.frequency.setValueAtTime(isDownbeat ? 800 : 400, audioContext.currentTime);
-      oscillator.type = 'square';
+      const frequency = isDownbeat ? "C5" : "C4"; // 800Hz vs 400Hz approximately
+      const velocity = isDownbeat ? 1.0 : 0.7;
 
-      // Short click envelope
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.1);
+      // Trigger the metronome synth at the scheduled time
+      this.metronome.triggerAttackRelease(frequency, "32n", time, velocity);
     } catch (error) {
-      // Silently fail if audio context isn't available
       console.warn('Metronome click failed:', error);
     }
   }
@@ -146,7 +176,12 @@ export class PlaybackState {
   public setTempo(bpm: number) {
     chordProgressionState.setTempo(bpm);
 
+    // Update Tone.Transport BPM
+    Tone.getTransport().bpm.value = bpm;
+
     // Restart timer with new tempo if playing
+    // Note: Tone.Transport handles tempo changes automatically,
+    // but we restart to ensure synchronization
     if (this.mode() === 'playing') {
       this.startTimer();
     }
@@ -211,6 +246,13 @@ export class PlaybackState {
 
     // Reset beat to beginning of chord
     this.currentBeat.set(index * this.beatsPerChord());
+  }
+
+  // Cleanup method
+  public dispose() {
+    this.stopTimer();
+    this.metronome?.dispose();
+    this.metronome = null;
   }
 
   // Getters for computed values
