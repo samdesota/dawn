@@ -25,5 +25,10 @@ export default defineConfig({
         950: '#1c1c1c',  // Dark charcoal (triad dark)
       }
     }
+  },
+
+  shortcuts: {
+    'vflex': 'flex flex-col',
+    'hflex': 'flex flex-row',
   }
 });

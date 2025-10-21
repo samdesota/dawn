@@ -49,6 +49,9 @@ export class UIState {
   public screenSize = createAtom<'mobile' | 'tablet' | 'desktop'>('tablet');
   public orientation = createAtom<'portrait' | 'landscape'>('landscape');
   public isFullscreen = createAtom(false);
+  
+  // Mobile keyboard mode
+  public showFullscreenKeyboard = createAtom(false);
 
   // Touch and interaction
   public activeTouches = createAtom<Map<number, { x: number; y: number; keyId?: string }>>(new Map());
@@ -198,6 +201,15 @@ export class UIState {
     this.activeTouches.set(new Map());
   }
 
+  // Fullscreen keyboard mode management
+  public openFullscreenKeyboard() {
+    this.showFullscreenKeyboard.set(true);
+  }
+
+  public closeFullscreenKeyboard() {
+    this.showFullscreenKeyboard.set(false);
+  }
+
   // Recording management
   public startRecording() {
     this.isRecording.set(true);
@@ -304,11 +316,11 @@ export class UIState {
 
     // Bottom border colors for chord tones with intensity hierarchy
     switch (chordRole) {
-      case 'root': return '#d97706'; // Amber-600 - strongest
+      case 'extension': return '#92400e'; // Amber-800 - lightest
+      case 'seventh': return '#ca8a04'; // Amber-700 - lighter
+      case 'fifth': return '#d97706'; // Amber-600 - strongest
       case 'third': return '#f59e0b'; // Amber-500 - strong
-      case 'fifth': return '#fbbf24'; // Amber-400 - medium
-      case 'seventh': return '#fcd34d'; // Amber-300 - lighter
-      case 'extension': return '#fde68a'; // Amber-200 - lightest
+      case 'root': return '#fbbf24'; // Amber-400 - medium
       default: return 'transparent';
     }
   }
@@ -330,6 +342,7 @@ export class UIState {
   get isFullscreenValue() { return this.isFullscreen(); }
   get activeTouchesValue() { return this.activeTouches(); }
   get lastTouchTimeValue() { return this.lastTouchTime(); }
+  get showFullscreenKeyboardValue() { return this.showFullscreenKeyboard(); }
 }
 
 // Export singleton instance

@@ -14,6 +14,7 @@ export default defineConfig({
     port: 3333,
     host: true, // This makes the server accessible from your LAN for both IPv4 and IPv6
     strictPort: true, // Don't try alternative ports if 3000 is in use
+    allowedHosts: ['samuels-macbook-pro'],
   },
   build: {
     target: "esnext",

@@ -94,6 +94,14 @@ export class ChordProgressionState {
     this.tempo.set(this.builtInSongs[0].defaultTempo);
   }
 
+  public getSongInfo(songName: string) {
+    const song = this.builtInSongs.find(s => s.name === songName);
+    if (song) {
+      return song;
+    }
+    return null;
+  }
+
   public selectSong(songName: string) {
     const song = this.builtInSongs.find(s => s.name === songName);
     if (song) {

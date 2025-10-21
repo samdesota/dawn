@@ -13,6 +13,7 @@ export interface KeyInfo extends NoteInfo {
 
 export class KeyboardState {
   // Reactive state atoms
+  public containerDimensions= createAtom({ width: window.innerWidth, height: window.innerHeight });
   public octaveRange = createAtom([3, 5] as [number, number]); // Start with 3 octaves
   public keyWidth = createAtom(150); // Base key width in pixels
   public keyboardKeys = createAtom<KeyInfo[]>([]);
@@ -26,22 +27,15 @@ export class KeyboardState {
     'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
   };
 
-  constructor() {
-    this.generateKeyboard();
-
-    // Regenerate keyboard when chord changes
-    // Note: In a real implementation, you'd want to use createEffect or similar
-    // For now, we'll manually call updateHighlighting when needed
-  }
-
-  onResize() {
+  onResize(width: number, height: number) {
+    console.log('Keyboard state resized', width, height);
+    this.containerDimensions.set({ width, height });
     this.generateKeyboard()
   }
 
   private generateKeyboard() {
-    const keyWidth = (window.innerWidth - 32 - (9 * 4)) / 10;
-
-    this.keyWidth.set(keyWidth)
+    const keyWidth = (this.containerDimensions().width - (9 * 4)) / 10;
+    const baseHeight = this.containerDimensions().height;
 
     const keys: KeyInfo[] = [];
     const [startOctave, endOctave] = this.octaveRange();
@@ -50,14 +44,14 @@ export class KeyboardState {
       for (let i = 0; i < this.chromaticNotes.length; i++) {
         const note = this.chromaticNotes[i];
         const noteInfo = this.createNoteInfo(note, octave);
-        const keyInfo = this.createKeyInfo(noteInfo);
+        const keyInfo = this.createKeyInfo(noteInfo, keyWidth, baseHeight);
         keys.push(keyInfo);
       }
     }
 
     // Add a final key returning to the root note
     const rootNote = this.chromaticNotes[0];
-    const rootKeyInfo = this.createKeyInfo(this.createNoteInfo(rootNote, endOctave + 1));
+    const rootKeyInfo = this.createKeyInfo(this.createNoteInfo(rootNote, endOctave + 1), keyWidth, baseHeight);
     keys.push(rootKeyInfo);
 
 
@@ -78,13 +72,13 @@ export class KeyboardState {
     };
   }
 
-  private createKeyInfo(noteInfo: NoteInfo): KeyInfo {
+  private createKeyInfo(noteInfo: NoteInfo, baseWidth: number, baseHeight: number): KeyInfo {
     const noteType = chordProgressionState.getNoteType(noteInfo.note);
     const chordRole = chordProgressionState.getChordToneRole(noteInfo.note);
     const isHighlighted = chordProgressionState.isNoteInCurrentChord(noteInfo.note);
 
     // Determine key dimensions based on note type hierarchy
-    const dimensions = this.getKeyDimensions(noteType);
+    const dimensions = this.getKeyDimensions(noteType, baseWidth, baseHeight);
 
     return {
       ...noteInfo,
@@ -97,10 +91,7 @@ export class KeyboardState {
     };
   }
 
-  private getKeyDimensions(noteType: 'triad' | 'pentatonic' | 'scale' | 'chromatic') {
-    const baseWidth = this.keyWidth();
-    const baseHeight = 300; // Base height in pixels
-
+  private getKeyDimensions(noteType: 'triad' | 'pentatonic' | 'scale' | 'chromatic', baseWidth: number, baseHeight: number) {
     switch (noteType) {
       case 'triad':
         return { width: baseWidth, height: baseHeight }; // Full height, base layer

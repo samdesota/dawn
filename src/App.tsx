@@ -1,18 +1,18 @@
 import type { Component } from "solid-js";
-import { onMount, onCleanup } from "solid-js";
+import { onMount, onCleanup, Show } from "solid-js";
 
-import { KeyboardLayout } from "./improviser/components/KeyboardLayout";
-import { ChordDisplay } from "./improviser/components/ChordDisplay";
-import { TransportControls } from "./improviser/components/TransportControls";
-import { SongSelector } from "./improviser/components/SongSelector";
+import { DesktopAppLayout } from "./improviser/components/DesktopAppLayout";
+import { MobileAppLayout } from "./improviser/components/MobileAppLayout";
+import { FullscreenKeyboard } from "./improviser/components/FullscreenKeyboard";
 
 import { audioEngineState } from "./improviser/state/AudioEngineState";
-import { chordProgressionState } from "./improviser/state/ChordProgressionState";
 import { playbackState } from "./improviser/state/PlaybackState";
 import { uiState } from "./improviser/state/UIState";
-import { Rerun } from "@solid-primitives/keyed";
+import { useIsMobile } from "./utils/deviceUtils";
 
 const App: Component = () => {
+  const isMobile = useIsMobile();
+
   // Initialize the application
   onMount(async () => {
     console.log("Musical Instrument App starting...");
@@ -143,37 +143,21 @@ const App: Component = () => {
 
   return (
     <div
-      class={`app min-h-screen ${getThemeClasses()} transition-colors duration-300`}
+      class={`app min-h-100dvh ${getThemeClasses()} transition-colors duration-300`}
       data-theme={getCurrentTheme()}
     >
-      {/* Main Content */}
-      <main class="app-main flex flex-col flex-1 min-h-screen">
-        {/* Cover Flow Song Selector - Top */}
-        <div class="song-selector-area w-full p-4 bg-black border-b border-gray-800">
-          <SongSelector />
-        </div>
+      {/* Fullscreen Keyboard Overlay */}
+      <Show when={uiState.showFullscreenKeyboardValue}>
+        <FullscreenKeyboard />
+      </Show>
 
-        {/* Main Content Area - Vertical Layout */}
-
-        <div class="content-area flex-1 flex flex-col bg-gray-950 flex-1">
-          {/* Chord Progression Display */}
-          <Rerun on={() => chordProgressionState.currentSong().name}>
-            <div class="chord-display-area p-4">
-              <ChordDisplay />
-            </div>
-          </Rerun>
-
-          {/* Keyboard Area */}
-          <div class="keyboard-area flex-1 p-4 overflow-hidden flex flex-col">
-            <div class="keyboard-container flex flex-col flex-1 w-full">
-              <KeyboardLayout />
-            </div>
-          </div>
-        </div>
-      </main>
+      {/* Responsive Layout - Desktop or Mobile */}
+      <Show when={!isMobile()} fallback={<MobileAppLayout />}>
+        <DesktopAppLayout />
+      </Show>
 
       {/* Audio Status Indicator */}
-      <div class="audio-status fixed bottom-4 right-4 z-50">
+      {/* <div class="audio-status fixed top-4 right-4 z-50">
         <div
           class="status-indicator px-3 py-2 rounded-full text-sm font-medium shadow-lg"
           classList={{
@@ -183,7 +167,7 @@ const App: Component = () => {
         >
           {audioEngineState.audioInitialized ? "Audio Ready" : "Audio Error"}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

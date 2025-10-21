@@ -1,4 +1,4 @@
-import { Component, For, onMount } from 'solid-js';
+import { Component, For, onCleanup, onMount } from 'solid-js';
 import { keyboardState } from '../state/KeyboardState';
 import { audioEngineState } from '../state/AudioEngineState';
 import { uiState } from '../state/UIState';
@@ -9,6 +9,7 @@ import { debounce } from '../../utils/audioUtils/debounce';
 
 export const KeyboardLayout: Component = () => {
   let keyboardContainer: HTMLDivElement | undefined;
+  let keyboardLayoutRef: HTMLDivElement | undefined;
   let emergencyStopTimeout: number | undefined;
 
   onMount(() => {
@@ -18,11 +19,25 @@ export const KeyboardLayout: Component = () => {
       keyboardContainer.addEventListener('touchmove', handleTouchEvent, { passive: false });
       keyboardContainer.addEventListener('touchend', handleTouchEvent, { passive: false });
       keyboardContainer.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+
     }
 
-    const resizeHandler = debounce(keyboardState.onResize.bind(keyboardState), 100);
 
-    window.addEventListener('resize', resizeHandler);
+    // Set up ResizeObserver for keyboard container
+    const resizeHandler = debounce(() => {
+      const rect = keyboardLayoutRef?.getBoundingClientRect();
+      console.log('Keyboard layout resized', rect.width, rect.height);
+      keyboardState.onResize(rect?.width ?? 0, rect?.height ?? 0);
+    }, 100);
+    const resizeObserver = new ResizeObserver(resizeHandler);
+    
+    if (keyboardLayoutRef) {
+       resizeObserver.observe(keyboardLayoutRef);
+       const rect = keyboardLayoutRef.getBoundingClientRect();
+       if (rect.width > 0 && rect.height > 0) {
+         keyboardState.onResize(rect.width, rect.height);
+       }
+    }
 
     // Add emergency stop on window blur/focus loss
     const handleWindowBlur = () => {
@@ -57,15 +72,15 @@ export const KeyboardLayout: Component = () => {
     document.addEventListener('keydown', handleKeyDown);
 
     // Cleanup on unmount
-    return () => {
+    onCleanup(() => {
+      resizeObserver.disconnect();
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', resizeHandler);
       if (emergencyStopTimeout) {
         clearTimeout(emergencyStopTimeout);
       }
-    };
+    });
   });
 
   // Declarative function to determine which notes should be playing based on current touches
@@ -185,19 +200,17 @@ export const KeyboardLayout: Component = () => {
   };
 
   return (
-    <div class="keyboard-layout w-full h-full overflow-hidden flex-1 flex flex-col">
+    <div ref={keyboardLayoutRef} class="keyboard-layout w-full h-full overflow-hidden flex-1 flex flex-col min-h-250px">
       <div
         ref={keyboardContainer}
-        class="keyboard-container relative h-full overflow-x-auto overflow-y-hidden flex-1 flex flex-col"
+        class="keyboard-container relative h-full overflow-y-hidden flex-1 flex flex-col"
         style={{
           width: '100%',
-          'min-width': `${getTotalWidth()}px`
         }}
       >
         <div
           class="keyboard-keys relative h-full flex-1"
           style={{
-            width: `${getTotalWidth()}px`,
             height: '100%'
           }}
         >

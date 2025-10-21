@@ -11,6 +11,10 @@
   -webkit-touch-callout: none;
 }
 
+body {
+  background-color: oklch(0.22645 2.23517e-8 none);
+}
+
 /* Smooth transitions for theme changes */
 * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
@@ -159,7 +163,6 @@
 
   .keyboard-area {
     order: 1;
-    min-height: 60vh;
   }
 }
 
@@ -182,6 +185,36 @@
     max-height: calc(100vh - 80px);
     overflow-y: auto;
   }
+}
+
+/* Portrait orientation warning for mobile layout only */
+.landscape-warning-mobile {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Show warning only on mobile devices in landscape, but NOT in fullscreen mode */
+@media (orientation: landscape) and (max-width: 896px) {
+  .app-main .landscape-warning-mobile {
+    display: flex;
+  }
+}
+
+/* Hide warning when in fullscreen (keyboard mode) */
+.fullscreen-keyboard .landscape-warning-mobile,
+:fullscreen .landscape-warning-mobile,
+:-webkit-full-screen .landscape-warning-mobile,
+:-moz-full-screen .landscape-warning-mobile,
+:-ms-fullscreen .landscape-warning-mobile {
+  display: none !important;
 }
 
 /* High DPI displays */
