@@ -119,11 +119,6 @@
   height: 100px;
 }
 
-/* Keyboard layout styles */
-.keyboard-layout {
-  background: #0a0a0a;
-}
-
 .keyboard-container {
   position: relative;
   height: 100%;

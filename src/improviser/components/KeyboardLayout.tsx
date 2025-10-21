@@ -5,6 +5,7 @@ import { uiState } from '../state/UIState';
 import { KeyButton } from './KeyButton';
 import type { NoteInfo } from '../state/AudioEngineState';
 import { Key } from '@solid-primitives/keyed';
+import { debounce } from '../../utils/audioUtils/debounce';
 
 export const KeyboardLayout: Component = () => {
   let keyboardContainer: HTMLDivElement | undefined;
@@ -18,6 +19,10 @@ export const KeyboardLayout: Component = () => {
       keyboardContainer.addEventListener('touchend', handleTouchEvent, { passive: false });
       keyboardContainer.addEventListener('touchcancel', handleTouchCancel, { passive: false });
     }
+
+    const resizeHandler = debounce(keyboardState.onResize.bind(keyboardState), 100);
+
+    window.addEventListener('resize', resizeHandler);
 
     // Add emergency stop on window blur/focus loss
     const handleWindowBlur = () => {
@@ -56,6 +61,7 @@ export const KeyboardLayout: Component = () => {
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', resizeHandler);
       if (emergencyStopTimeout) {
         clearTimeout(emergencyStopTimeout);
       }
@@ -179,7 +185,7 @@ export const KeyboardLayout: Component = () => {
   };
 
   return (
-    <div class="keyboard-layout w-full h-full overflow-hidden bg-black flex-1 flex flex-col">
+    <div class="keyboard-layout w-full h-full overflow-hidden flex-1 flex flex-col">
       <div
         ref={keyboardContainer}
         class="keyboard-container relative h-full overflow-x-auto overflow-y-hidden flex-1 flex flex-col"

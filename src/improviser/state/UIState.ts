@@ -277,7 +277,7 @@ export class UIState {
 
     if (isDark) {
       switch (noteType) {
-        case 'triad': return '#1c1c1c'; // Dark charcoal
+        case 'triad': return '#222222'; // Dark charcoal
         case 'pentatonic': return '#2a2a2a'; // Slightly lighter charcoal
         case 'scale': return '#333333'; // Medium dark gray
         case 'chromatic': return '#404040'; // Lighter gray

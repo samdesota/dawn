@@ -34,7 +34,15 @@ export class KeyboardState {
     // For now, we'll manually call updateHighlighting when needed
   }
 
+  onResize() {
+    this.generateKeyboard()
+  }
+
   private generateKeyboard() {
+    const keyWidth = (window.innerWidth - 32 - (9 * 4)) / 10;
+
+    this.keyWidth.set(keyWidth)
+
     const keys: KeyInfo[] = [];
     const [startOctave, endOctave] = this.octaveRange();
 

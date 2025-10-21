@@ -8,6 +8,7 @@ export default defineConfig({
     colors: {
       // Custom black color - softer than pure black
       black: '#0a0a0a',
+      white: '#ffffff',
       // Custom gray palette matching piano key colors
       gray: {
         50: '#f8f9fa',   // Light gray (triad light)
