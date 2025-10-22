@@ -7,17 +7,21 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:dry-run": "npm run build && wrangler deploy --dry-run"
   },
   "license": "MIT",
   "devDependencies": {
+    "@cloudflare/kv-asset-handler": "^0.3.4",
     "@unocss/preset-mini": "^66.0.0",
     "@unocss/preset-wind4": "^66.1.2",
     "@unocss/vite": "^66.0.0",
     "immer": "^10.1.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
-    "vite-plugin-solid": "^2.11.6"
+    "vite-plugin-solid": "^2.11.6",
+    "wrangler": "^3.80.0"
   },
   "dependencies": {
     "@solid-primitives/keyed": "^1.5.1",

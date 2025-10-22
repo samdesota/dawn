@@ -1,11 +1,11 @@
-import { Component } from 'solid-js';
-import { Rerun } from '@solid-primitives/keyed';
-import { SongSelector } from './SongSelector';
-import { ChordDisplay } from './ChordDisplay';
-import { uiState } from '../state/UIState';
-import { chordProgressionState } from '../state/ChordProgressionState';
-import { playbackState } from '../state/PlaybackState';
-import { chordCompingState } from '../state/ChordCompingState';
+import { Component } from "solid-js";
+import { Rerun } from "@solid-primitives/keyed";
+import { SongSelector } from "./SongSelector";
+import { ChordDisplay } from "./ChordDisplay";
+import { uiState } from "../state/UIState";
+import { chordProgressionState } from "../state/ChordProgressionState";
+import { playbackState } from "../state/PlaybackState";
+import { chordCompingState } from "../state/ChordCompingState";
 
 export const MobileAppLayout: Component = () => {
   const handleStartPlaying = () => {
@@ -22,15 +22,17 @@ export const MobileAppLayout: Component = () => {
       {/* Portrait Orientation Warning - Only shows on mobile in landscape */}
       <div class="landscape-warning-mobile">
         <div class="text-6xl mb-6">📱</div>
-        <h2 class="text-2xl font-bold text-white mb-4">Please Rotate Your Device</h2>
+        <h2 class="text-2xl font-bold text-white mb-4">
+          Please Rotate Your Device
+        </h2>
         <p class="text-gray-300 text-lg">
-          This app works best in portrait orientation
+          Song selection works best in portrait orientation
         </p>
       </div>
 
       {/* Song Selector with Chord Progression - Takes flex space */}
-      <div class="flex-1 flex flex-col bg-black overflow-auto">
-          <SongSelector />
+      <div class="flex-1 flex flex-col bg-black">
+        <SongSelector />
       </div>
 
       {/* Start Playing Button - Fixed at Bottom */}
@@ -48,4 +50,3 @@ export const MobileAppLayout: Component = () => {
     </main>
   );
 };
-

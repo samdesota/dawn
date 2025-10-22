@@ -2,14 +2,14 @@
  * Utility functions for device detection and capabilities
  */
 
-import { createSignal, onCleanup, onMount } from 'solid-js';
+import { createSignal, onCleanup, onMount } from "solid-js";
 
 /**
  * Detects if the device is a mobile phone based on screen width
  * Uses a max width of 768px to determine phone devices
  */
 export function isMobilePhone(): boolean {
-  return window.innerWidth <= 768;
+  return window.innerWidth <= 768 || window.innerHeight <= 768;
 }
 
 export function useMatchesMediaQuery(query: string) {
@@ -17,8 +17,10 @@ export function useMatchesMediaQuery(query: string) {
   onMount(() => {
     const mediaQuery = window.matchMedia(query);
     setMatches(mediaQuery.matches);
-    mediaQuery.addEventListener('change', (e) => setMatches(e.matches));
-    onCleanup(() => mediaQuery.removeEventListener('change', (e) => setMatches(e.matches)));
+    mediaQuery.addEventListener("change", (e) => setMatches(e.matches));
+    onCleanup(() =>
+      mediaQuery.removeEventListener("change", (e) => setMatches(e.matches))
+    );
   });
   return matches;
 }
@@ -28,8 +30,8 @@ export function useMatchesMediaQuery(query: string) {
  * Uses a media query for efficient and declarative responsive detection
  */
 export function useIsMobile() {
-  const isMobileWidth = useMatchesMediaQuery('(max-width: 768px)');
-  const isMobileHeight = useMatchesMediaQuery('(max-height: 768px)');
+  const isMobileWidth = useMatchesMediaQuery("(max-width: 768px)");
+  const isMobileHeight = useMatchesMediaQuery("(max-height: 768px)");
 
   return () => isMobileWidth() || isMobileHeight();
 }
@@ -53,7 +55,7 @@ export function isPortrait(): boolean {
  */
 export async function enterFullscreen(element?: HTMLElement): Promise<void> {
   const targetElement = element || document.documentElement;
-  
+
   try {
     if (targetElement.requestFullscreen) {
       await targetElement.requestFullscreen();
@@ -65,7 +67,7 @@ export async function enterFullscreen(element?: HTMLElement): Promise<void> {
       await (targetElement as any).msRequestFullscreen();
     }
   } catch (error) {
-    console.warn('Failed to enter fullscreen:', error);
+    console.warn("Failed to enter fullscreen:", error);
     throw error;
   }
 }
@@ -85,7 +87,7 @@ export async function exitFullscreen(): Promise<void> {
       await (document as any).msExitFullscreen();
     }
   } catch (error) {
-    console.warn('Failed to exit fullscreen:', error);
+    console.warn("Failed to exit fullscreen:", error);
     throw error;
   }
 }
@@ -98,10 +100,10 @@ export async function lockToLandscape(): Promise<void> {
     // @ts-ignore
     if (screen.orientation && screen.orientation.lock) {
       // @ts-ignore
-      await screen.orientation.lock('landscape');
+      await screen.orientation.lock("landscape");
     }
   } catch (error) {
-    console.warn('Failed to lock orientation:', error);
+    console.warn("Failed to lock orientation:", error);
   }
 }
 
@@ -114,7 +116,6 @@ export function unlockOrientation(): void {
       screen.orientation.unlock();
     }
   } catch (error) {
-    console.warn('Failed to unlock orientation:', error);
+    console.warn("Failed to unlock orientation:", error);
   }
 }
-

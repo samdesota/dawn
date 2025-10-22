@@ -1,0 +1,14 @@
+name = "melody-dawn"
+main = "worker/index.js"
+compatibility_date = "2025-10-21"
+workers_dev = false
+
+# Custom domain configuration
+[[routes]]
+pattern = "melody.438d.xyz"
+custom_domain = true
+
+# Static assets configuration
+[site]
+bucket = "./dist"
+

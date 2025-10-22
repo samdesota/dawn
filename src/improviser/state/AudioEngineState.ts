@@ -1,5 +1,5 @@
-import { createAtom } from '../../state/atom';
-import * as Tone from 'tone';
+import { createAtom } from "../../state/atom";
+import * as Tone from "tone";
 
 export interface NoteInfo {
   note: string;
@@ -8,8 +8,8 @@ export interface NoteInfo {
   midiNumber: number;
 }
 
-export type InstrumentType = 'piano' | 'electric-piano' | 'synthesizer';
-export type NoteContext = 'keyboard' | 'chord' | 'general';
+export type InstrumentType = "piano" | "electric-piano" | "synthesizer";
+export type NoteContext = "keyboard" | "chord" | "general";
 
 export class AudioEngineState {
   // Tone.js instruments - separate synths for different contexts
@@ -23,15 +23,19 @@ export class AudioEngineState {
   private masterVolume: Tone.Volume | null = null;
 
   // Track active notes for declarative management
-  private activeKeyboardNotes = new Map<string, { noteInfo: NoteInfo; velocity: number }>();
+  private activeKeyboardNotes = new Map<
+    string,
+    { noteInfo: NoteInfo; velocity: number; startTime: number }
+  >();
 
   // Configurable envelope timing (in seconds)
-  public attackTime = 0.03; // 30ms attack
+  public attackTime = 0.01; // 10ms attack
   public releaseTime = 0.03; // 30ms release
+  public minimumSustainTime = 0.15; // 150ms minimum sustain time for taps
 
   // Reactive state atoms
   public volume = createAtom(0.5);
-  public instrument = createAtom<InstrumentType>('piano');
+  public instrument = createAtom<InstrumentType>("piano");
   public reverbMix = createAtom(0.3);
   public isInitialized = createAtom(false);
 
@@ -41,7 +45,7 @@ export class AudioEngineState {
 
   private async initializeAudio() {
     try {
-      console.log('Initializing Tone.js audio engine...');
+      console.log("Initializing Tone.js audio engine...");
 
       // Create effects chain
       this.compressor = new Tone.Compressor({
@@ -56,9 +60,7 @@ export class AudioEngineState {
         wet: this.reverbMix(),
       });
 
-      this.masterVolume = new Tone.Volume(
-        Tone.gainToDb(this.volume())
-      );
+      this.masterVolume = new Tone.Volume(Tone.gainToDb(this.volume()));
 
       // Connect effects chain: reverb -> compressor -> volume -> destination
       this.reverb.connect(this.compressor);
@@ -75,12 +77,12 @@ export class AudioEngineState {
       this.chordSynth.connect(this.reverb);
       this.generalSynth.connect(this.reverb);
 
-      console.log('Tone.js audio engine initialized successfully');
-      console.log('Audio context state:', Tone.getContext().state);
-      
+      console.log("Tone.js audio engine initialized successfully");
+      console.log("Audio context state:", Tone.getContext().state);
+
       this.isInitialized.set(true);
     } catch (error) {
-      console.error('Failed to initialize Tone.js audio engine:', error);
+      console.error("Failed to initialize Tone.js audio engine:", error);
       this.isInitialized.set(false);
     }
   }
@@ -94,7 +96,7 @@ export class AudioEngineState {
     };
 
     switch (instrument) {
-      case 'piano':
+      case "piano":
         // FM synthesis creates bell-like, piano-ish tones
         return new Tone.PolySynth(Tone.FMSynth, {
           harmonicity: 3,
@@ -105,7 +107,7 @@ export class AudioEngineState {
             sustain: 0.1,
           },
           modulation: {
-            type: 'sine',
+            type: "sine",
           },
           modulationEnvelope: {
             attack: 0.01,
@@ -116,7 +118,7 @@ export class AudioEngineState {
           volume: -8,
         });
 
-      case 'electric-piano':
+      case "electric-piano":
         // AM synthesis for electric piano character
         return new Tone.PolySynth(Tone.AMSynth, {
           harmonicity: 2,
@@ -126,7 +128,7 @@ export class AudioEngineState {
             sustain: 0.3,
           },
           modulation: {
-            type: 'square',
+            type: "square",
           },
           modulationEnvelope: {
             attack: 0.01,
@@ -137,11 +139,11 @@ export class AudioEngineState {
           volume: -6,
         });
 
-      case 'synthesizer':
+      case "synthesizer":
         // Sawtooth synth for classic synth sound
         return new Tone.PolySynth(Tone.Synth, {
           oscillator: {
-            type: 'sawtooth',
+            type: "sawtooth",
           },
           envelope: {
             ...envelope,
@@ -161,17 +163,31 @@ export class AudioEngineState {
   public async resumeContext() {
     try {
       await Tone.start();
-      console.log('Tone.js context started:', Tone.getContext().state);
+      console.log("Tone.js context started:", Tone.getContext().state);
     } catch (error) {
-      console.error('Failed to start Tone.js context:', error);
+      console.error("Failed to start Tone.js context:", error);
     }
   }
 
   public noteToFrequency(note: string, octave: number = 4): number {
     const noteMap: { [key: string]: number } = {
-      'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4,
-      'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9,
-      'A#': 10, 'Bb': 10, 'B': 11
+      C: 0,
+      "C#": 1,
+      Db: 1,
+      D: 2,
+      "D#": 3,
+      Eb: 3,
+      E: 4,
+      F: 5,
+      "F#": 6,
+      Gb: 6,
+      G: 7,
+      "G#": 8,
+      Ab: 8,
+      A: 9,
+      "A#": 10,
+      Bb: 10,
+      B: 11,
     };
 
     const noteNumber = noteMap[note];
@@ -193,11 +209,11 @@ export class AudioEngineState {
   // Get the appropriate synth for the context
   private getSynthForContext(context: NoteContext): Tone.PolySynth | null {
     switch (context) {
-      case 'keyboard':
+      case "keyboard":
         return this.keyboardSynth;
-      case 'chord':
+      case "chord":
         return this.chordSynth;
-      case 'general':
+      case "general":
         return this.generalSynth;
       default:
         return this.generalSynth;
@@ -208,20 +224,32 @@ export class AudioEngineState {
   private playNoteWithContext(
     noteInfo: NoteInfo,
     velocity: number = 1,
-    context: NoteContext = 'general',
+    context: NoteContext = "general",
     startTime?: number,
     duration?: number
   ) {
-    console.log('playNoteWithContext called:', noteInfo.note + noteInfo.octave, 'velocity:', velocity, 'context:', context, 'startTime:', startTime);
+    console.log(
+      "playNoteWithContext called:",
+      noteInfo.note + noteInfo.octave,
+      "velocity:",
+      velocity,
+      "context:",
+      context,
+      "startTime:",
+      startTime
+    );
 
     const synth = this.getSynthForContext(context);
     if (!synth) {
-      console.warn('Synth not available for context:', context);
+      console.warn("Synth not available for context:", context);
       return;
     }
 
-    if (Tone.getContext().state !== 'running') {
-      console.warn('Tone.js context not running, state:', Tone.getContext().state);
+    if (Tone.getContext().state !== "running") {
+      console.warn(
+        "Tone.js context not running, state:",
+        Tone.getContext().state
+      );
       return;
     }
 
@@ -237,33 +265,40 @@ export class AudioEngineState {
 
       if (duration !== undefined) {
         // Play note with specified duration
-        const time = startTime !== undefined ? `+${startTime - Tone.now()}` : undefined;
+        const time =
+          startTime !== undefined ? `+${startTime - Tone.now()}` : undefined;
         synth.triggerAttackRelease(toneNote, duration, time, toneVelocity);
-        console.log('Note triggered with duration:', noteKey, 'duration:', duration);
+        console.log(
+          "Note triggered with duration:",
+          noteKey,
+          "duration:",
+          duration
+        );
       } else {
         // Play note indefinitely (until released)
-        const time = startTime !== undefined ? `+${startTime - Tone.now()}` : undefined;
+        const time =
+          startTime !== undefined ? `+${startTime - Tone.now()}` : undefined;
         synth.triggerAttack(toneNote, time, toneVelocity);
-        console.log('Note triggered:', noteKey);
+        console.log("Note triggered:", noteKey);
       }
     } catch (error) {
-      console.error('Error playing note:', error);
+      console.error("Error playing note:", error);
     }
   }
 
   // Public API method - maintains backward compatibility
   public playNote(noteInfo: NoteInfo, velocity: number = 1) {
-    this.playNoteWithContext(noteInfo, velocity, 'general');
+    this.playNoteWithContext(noteInfo, velocity, "general");
   }
 
   // New method for keyboard-specific notes
   public playKeyboardNote(noteInfo: NoteInfo, velocity: number = 1) {
-    this.playNoteWithContext(noteInfo, velocity, 'keyboard');
+    this.playNoteWithContext(noteInfo, velocity, "keyboard");
   }
 
   // New method for chord-specific notes
   public playChordNote(noteInfo: NoteInfo, velocity: number = 1) {
-    this.playNoteWithContext(noteInfo, velocity, 'chord');
+    this.playNoteWithContext(noteInfo, velocity, "chord");
   }
 
   // Internal method for stopping notes with context awareness
@@ -272,31 +307,29 @@ export class AudioEngineState {
     const synth = this.getSynthForContext(context);
     const toneNote = this.noteInfoToToneNote(noteInfo);
 
-    console.log('stopNoteWithContext called:', noteKey);
-
     if (synth) {
       try {
         synth.triggerRelease(toneNote);
-        console.log('Note released:', noteKey);
+        console.log("Note released:", noteKey);
       } catch (error) {
-        console.warn('Error releasing note:', error);
+        console.warn("Error releasing note:", error);
       }
     }
   }
 
   // Public API method - maintains backward compatibility
   public stopNote(noteInfo: NoteInfo) {
-    this.stopNoteWithContext(noteInfo, 'general');
+    this.stopNoteWithContext(noteInfo, "general");
   }
 
   // New method for stopping keyboard-specific notes
   public stopKeyboardNote(noteInfo: NoteInfo) {
-    this.stopNoteWithContext(noteInfo, 'keyboard');
+    this.stopNoteWithContext(noteInfo, "keyboard");
   }
 
   // New method for stopping chord-specific notes
   public stopChordNote(noteInfo: NoteInfo) {
-    this.stopNoteWithContext(noteInfo, 'chord');
+    this.stopNoteWithContext(noteInfo, "chord");
   }
 
   // Enhanced chord playing that doesn't interfere with keyboard notes
@@ -306,16 +339,26 @@ export class AudioEngineState {
     duration: number = 1.0,
     scheduledTime?: number
   ) {
-    console.log('playChord called with', noteInfos.length, 'notes, velocity:', velocity, 'duration:', duration);
+    console.log(
+      "playChord called with",
+      noteInfos.length,
+      "notes, velocity:",
+      velocity,
+      "duration:",
+      duration
+    );
 
-    const synth = this.getSynthForContext('chord');
+    const synth = this.getSynthForContext("chord");
     if (!synth) {
-      console.warn('Chord synth not available');
+      console.warn("Chord synth not available");
       return;
     }
 
-    if (Tone.getContext().state !== 'running') {
-      console.warn('Tone.js context not running, state:', Tone.getContext().state);
+    if (Tone.getContext().state !== "running") {
+      console.warn(
+        "Tone.js context not running, state:",
+        Tone.getContext().state
+      );
       return;
     }
 
@@ -326,22 +369,27 @@ export class AudioEngineState {
       // Play each note in the chord with slight stagger (10ms)
       noteInfos.forEach((noteInfo, index) => {
         const toneNote = this.noteInfoToToneNote(noteInfo);
-        const noteStartTime = now + (index * 0.01); // 10ms stagger
+        const noteStartTime = now + index * 0.01; // 10ms stagger
         const timeString = `+${noteStartTime - Tone.now()}`;
 
         // Use triggerAttackRelease for automatic note off
-        synth.triggerAttackRelease(toneNote, duration, timeString, toneVelocity);
-        
-        console.log('Chord note scheduled:', toneNote, 'at:', noteStartTime);
+        synth.triggerAttackRelease(
+          toneNote,
+          duration,
+          timeString,
+          toneVelocity
+        );
+
+        console.log("Chord note scheduled:", toneNote, "at:", noteStartTime);
       });
     } catch (error) {
-      console.error('Error playing chord:', error);
+      console.error("Error playing chord:", error);
     }
   }
 
   // Stop notes by context
   public stopAllNotes(context?: NoteContext) {
-    console.log('stopAllNotes called, context:', context);
+    console.log("stopAllNotes called, context:", context);
 
     if (context) {
       const synth = this.getSynthForContext(context);
@@ -355,22 +403,26 @@ export class AudioEngineState {
       this.generalSynth?.releaseAll();
     }
 
-    console.log('Notes stopped');
+    if (context === "keyboard") {
+      this.activeKeyboardNotes.clear();
+    }
+
+    console.log("Notes stopped");
   }
 
   // Stop only keyboard notes
   public stopAllKeyboardNotes() {
-    this.stopAllNotes('keyboard');
+    this.stopAllNotes("keyboard");
   }
 
   // Stop only chord notes
   public stopAllChordNotes() {
-    this.stopAllNotes('chord');
+    this.stopAllNotes("chord");
   }
 
   // Emergency method to force stop everything
   public emergencyStopAll() {
-    console.warn('Emergency stop all notes called!');
+    console.warn("Emergency stop all notes called!");
 
     try {
       // Force release all notes on all synths
@@ -396,26 +448,37 @@ export class AudioEngineState {
         this.generalSynth.connect(this.reverb);
       }
 
-      console.log('Audio engine reset complete');
+      console.log("Audio engine reset complete");
     } catch (error) {
-      console.error('Error in emergency stop:', error);
+      console.error("Error in emergency stop:", error);
     }
   }
 
   // New declarative method to set which keyboard notes should be active
-  public setActiveKeyboardNotes(activeNotes: Array<{ noteInfo: NoteInfo; velocity: number }>) {
-    console.log('setActiveKeyboardNotes called with', activeNotes.length, 'notes');
+  public setActiveKeyboardNotes(
+    activeNotes: Array<{ noteInfo: NoteInfo; velocity: number }>
+  ) {
+    console.log(
+      "setActiveKeyboardNotes called with",
+      activeNotes.length,
+      "notes"
+    );
 
     const synth = this.keyboardSynth;
     if (!synth) {
-      console.warn('Keyboard synth not available');
+      console.warn("Keyboard synth not available");
       return;
     }
 
-    if (Tone.getContext().state !== 'running') {
-      console.warn('Tone.js context not running, state:', Tone.getContext().state);
+    if (Tone.getContext().state !== "running") {
+      console.warn(
+        "Tone.js context not running, state:",
+        Tone.getContext().state
+      );
       return;
     }
+
+    const now = Tone.now();
 
     // Get current active keyboard notes
     const currentKeyboardNotes = new Set<string>();
@@ -425,21 +488,42 @@ export class AudioEngineState {
 
     // Get target notes that should be active
     const targetKeyboardNotes = new Set<string>();
-    const targetNoteMap = new Map<string, { noteInfo: NoteInfo; velocity: number }>();
+    const targetNoteMap = new Map<
+      string,
+      { noteInfo: NoteInfo; velocity: number }
+    >();
 
     for (const { noteInfo, velocity } of activeNotes) {
-      const noteKey = this.getNoteKey(noteInfo, 'keyboard');
+      const noteKey = this.getNoteKey(noteInfo, "keyboard");
       targetKeyboardNotes.add(noteKey);
       targetNoteMap.set(noteKey, { noteInfo, velocity });
     }
 
-    // Stop notes that should no longer be playing
+    // Stop notes that should no longer be playing (with minimum sustain check)
     for (const noteKey of currentKeyboardNotes) {
       if (!targetKeyboardNotes.has(noteKey)) {
         const data = this.activeKeyboardNotes.get(noteKey);
         if (data) {
-          this.stopKeyboardNote(data.noteInfo);
-          this.activeKeyboardNotes.delete(noteKey);
+          const timeElapsed = now - data.startTime;
+          const remainingTime = this.minimumSustainTime - timeElapsed;
+
+          if (remainingTime > 0) {
+            // Mark note for deletion but keep it in the map temporarily
+            // Schedule the note release after minimum sustain time
+            const noteInfo = data.noteInfo;
+            setTimeout(() => {
+              // Check if the note is still in the map and hasn't been restarted
+              const currentData = this.activeKeyboardNotes.get(noteKey);
+              if (currentData && currentData.startTime === data.startTime) {
+                this.stopKeyboardNote(noteInfo);
+                this.activeKeyboardNotes.delete(noteKey);
+              }
+            }, remainingTime * 1000);
+          } else {
+            // Minimum sustain time has passed, stop immediately
+            this.stopKeyboardNote(data.noteInfo);
+            this.activeKeyboardNotes.delete(noteKey);
+          }
         }
       }
     }
@@ -450,12 +534,18 @@ export class AudioEngineState {
         const target = targetNoteMap.get(noteKey);
         if (target) {
           this.playKeyboardNote(target.noteInfo, target.velocity);
-          this.activeKeyboardNotes.set(noteKey, target);
+          this.activeKeyboardNotes.set(noteKey, {
+            ...target,
+            startTime: now,
+          });
         }
       }
     }
 
-    console.log('Active keyboard notes updated. Playing:', targetKeyboardNotes.size);
+    console.log(
+      "Active keyboard notes updated. Playing:",
+      targetKeyboardNotes.size
+    );
   }
 
   public setVolume(volume: number) {
@@ -467,7 +557,7 @@ export class AudioEngineState {
 
   public setInstrument(instrument: InstrumentType) {
     this.instrument.set(instrument);
-    
+
     // Stop all notes before switching instruments
     this.emergencyStopAll();
   }
@@ -483,7 +573,7 @@ export class AudioEngineState {
   public setEnvelopeTiming(attackTimeMs: number, releaseTimeMs: number) {
     this.attackTime = Math.max(0.001, attackTimeMs / 1000); // Convert to seconds, minimum 1ms
     this.releaseTime = Math.max(0.001, releaseTimeMs / 1000); // Convert to seconds, minimum 1ms
-    
+
     // Update envelope on all synths
     const updateEnvelope = (synth: Tone.PolySynth | null) => {
       if (synth) {
@@ -491,7 +581,7 @@ export class AudioEngineState {
           envelope: {
             attack: this.attackTime,
             release: this.releaseTime,
-          }
+          },
         });
       }
     };
@@ -500,11 +590,24 @@ export class AudioEngineState {
     updateEnvelope(this.chordSynth);
     updateEnvelope(this.generalSynth);
 
-    console.log(`Envelope timing updated: attack=${this.attackTime}s, release=${this.releaseTime}s`);
+    console.log(
+      `Envelope timing updated: attack=${this.attackTime}s, release=${this.releaseTime}s`
+    );
+  }
+
+  // Method to configure minimum sustain time
+  public setMinimumSustainTime(timeMs: number) {
+    this.minimumSustainTime = Math.max(0, timeMs / 1000); // Convert to seconds, minimum 0ms
+    console.log(`Minimum sustain time updated: ${this.minimumSustainTime}s`);
   }
 
   // New method to set ADSR envelope
-  public setEnvelope(attack: number, decay: number, sustain: number, release: number) {
+  public setEnvelope(
+    attack: number,
+    decay: number,
+    sustain: number,
+    release: number
+  ) {
     const envelope = {
       attack: Math.max(0.001, attack),
       decay: Math.max(0.001, decay),
@@ -527,20 +630,27 @@ export class AudioEngineState {
     this.attackTime = envelope.attack;
     this.releaseTime = envelope.release;
 
-    console.log('Envelope updated:', envelope);
+    console.log("Envelope updated:", envelope);
   }
 
   // New method to set reverb decay
   public setReverbDecay(seconds: number) {
     if (this.reverb) {
       this.reverb.decay = Math.max(0.1, Math.min(10, seconds));
-      console.log('Reverb decay set to:', this.reverb.decay);
+      console.log("Reverb decay set to:", this.reverb.decay);
     }
   }
 
   // Getters for envelope timing
-  get currentAttackTime() { return this.attackTime * 1000; } // Return in milliseconds
-  get currentReleaseTime() { return this.releaseTime * 1000; } // Return in milliseconds
+  get currentAttackTime() {
+    return this.attackTime * 1000;
+  } // Return in milliseconds
+  get currentReleaseTime() {
+    return this.releaseTime * 1000;
+  } // Return in milliseconds
+  get currentMinimumSustainTime() {
+    return this.minimumSustainTime * 1000;
+  } // Return in milliseconds
 
   // Debug method to get active notes info
   public getActiveNotesInfo() {
@@ -551,18 +661,28 @@ export class AudioEngineState {
   }
 
   // Getters for computed values
-  get currentVolume() { return this.volume(); }
-  get currentInstrument() { return this.instrument(); }
-  get currentReverbMix() { return this.reverbMix(); }
-  get audioInitialized() { return this.isInitialized(); }
+  get currentVolume() {
+    return this.volume();
+  }
+  get currentInstrument() {
+    return this.instrument();
+  }
+  get currentReverbMix() {
+    return this.reverbMix();
+  }
+  get audioInitialized() {
+    return this.isInitialized();
+  }
 
   // Public getter for audio context (now returns Tone.js context)
-  get getAudioContext() { return Tone.getContext().rawContext; }
+  get getAudioContext() {
+    return Tone.getContext().rawContext;
+  }
 
   // Cleanup method
   public dispose() {
-    console.log('Disposing audio engine...');
-    
+    console.log("Disposing audio engine...");
+
     this.keyboardSynth?.dispose();
     this.chordSynth?.dispose();
     this.generalSynth?.dispose();
@@ -577,7 +697,7 @@ export class AudioEngineState {
     this.compressor = null;
     this.masterVolume = null;
 
-    console.log('Audio engine disposed');
+    console.log("Audio engine disposed");
   }
 }
 

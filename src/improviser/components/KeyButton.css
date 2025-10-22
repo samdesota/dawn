@@ -1,0 +1,17 @@
+.key-button {
+  --highlight-color: transparent;
+}
+
+.key-button:after {
+  content: "";
+  position: absolute;
+  transition: background-color 0.1s ease-in-out;
+  bottom: -1px;
+  left: -1px;
+  right: -1px;
+  /* width: 100%; */
+  height: 5px;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  background-color: var(--highlight-color);
+}

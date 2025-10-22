@@ -2,3 +2,7 @@ node_modules
 dist
 /samples
 .vercel
+
+# Cloudflare Workers
+.wrangler
+wrangler.toml.local

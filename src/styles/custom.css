@@ -17,7 +17,8 @@ body {
 
 /* Smooth transitions for theme changes */
 * {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -54,14 +55,25 @@ body {
 
 /* Key button animations */
 @keyframes keyPress {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.95); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes chordTonePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .key-press-animation {
@@ -91,8 +103,12 @@ body {
 
 /* Loading spinner */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin {
@@ -106,7 +122,7 @@ body {
 }
 
 .touch-feedback::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -126,8 +142,6 @@ body {
 .keyboard-container {
   position: relative;
   height: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .keyboard-keys {
@@ -174,7 +188,6 @@ body {
 
   .keyboard-container {
     height: 100%;
-    overflow-x: auto;
     overflow-y: hidden;
   }
 }
@@ -183,7 +196,6 @@ body {
 @media (orientation: landscape) {
   .control-panel {
     max-height: calc(100vh - 80px);
-    overflow-y: auto;
   }
 }
 
@@ -192,7 +204,7 @@ body {
   display: none;
   position: fixed;
   inset: 0;
-  background: #000;
+  background: oklch(0.22645 2.23517e-8 none);
   z-index: 9999;
   flex-direction: column;
   align-items: center;
@@ -229,8 +241,7 @@ body {
 button:focus,
 select:focus,
 input:focus {
-  outline: 2px solid #fbbf24;
-  outline-offset: 2px;
+  outline: none;
 }
 
 /* Reduce motion for users who prefer it */
