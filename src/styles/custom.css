@@ -12,7 +12,7 @@
 }
 
 body {
-  background-color: oklch(0.22645 2.23517e-8 none);
+  background-color: #151515;
 }
 
 /* Smooth transitions for theme changes */

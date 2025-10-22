@@ -27,11 +27,7 @@ const App: Component = () => {
       // Playback state is ready
       console.log("Playback system initialized");
 
-      // Set default theme based on system preference
-      const isDarkMode = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      uiState.updatePreference("keyboardTheme", isDarkMode ? "dark" : "light");
+      uiState.updatePreference("keyboardTheme", "dark");
 
       // Handle theme changes
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");

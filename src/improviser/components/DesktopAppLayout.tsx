@@ -17,9 +17,9 @@ export const DesktopAppLayout: Component = () => {
       <Rerun on={() => chordProgressionState.currentSong().name}>
         <div class="chord-display-area pb-8 relative">
           {/* Centered arrow pointing down */}
-          <svg 
+          <svg
             class="absolute left-1/2 top-[-20px] -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-yellow-400"
-            viewBox="0 0 24 24" 
+            viewBox="0 0 24 24"
             fill="currentColor"
           >
             <path d="M7 10l5 5 5-5z" />
@@ -29,7 +29,7 @@ export const DesktopAppLayout: Component = () => {
       </Rerun>
 
       {/* Main Content Area - Vertical Layout */}
-      <div class="content-area flex-1 flex flex-col bg-gray-950 border-t border-gray-800 pt-4">
+      <div class="content-area flex-1 flex flex-col bg-gray-950 border-t border-gray-900 pt-4">
         {/* Chord Progression Display */}
         <Rerun on={() => chordProgressionState.currentSong().name}>
           <div class="px-4">

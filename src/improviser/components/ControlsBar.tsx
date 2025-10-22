@@ -20,13 +20,23 @@ export const ControlsBar: Component<ControlsBarProps> = (props) => {
   const handlePlayProgression = () => {
     // Start both playback and comping together
     if (playbackState.isPlaying) {
-      // Stop everything
-      playbackState.stop();
-      chordCompingState.disable();
+      // Pause everything
+      playbackState.pause();
+      chordCompingState.pause();
     } else {
-      // Start everything
+      // Check if we're resuming from pause or starting fresh
+      const wasPaused = playbackState.isPaused;
+
+      // Start or resume playback
       playbackState.play();
-      chordCompingState.enable();
+
+      if (wasPaused) {
+        // Resume from paused state
+        chordCompingState.resume();
+      } else {
+        // Start fresh
+        chordCompingState.enable();
+      }
     }
   };
 
@@ -49,34 +59,32 @@ export const ControlsBar: Component<ControlsBarProps> = (props) => {
   };
 
   return (
-    <div class="controls-bar py-2 rounded-lg">
+    <div class="controls-bar rounded-lg">
       {chordProgressionState.getCurrentChord() && (
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <div class="chord-notes flex space-x-2">
-              <For each={chordProgressionState.getCurrentChord()!.notes}>
-                {(note, index) => (
-                  <span
-                    class={`note-pill px-2 py-1 rounded text-base font-medium ${
-                      index() === 0
-                        ? "bg-yellow-500 text-black"
-                        : index() === 1
-                        ? "bg-yellow-600 text-white"
-                        : index() === 2
-                        ? "bg-yellow-700 text-white"
-                        : "bg-yellow-800 text-white"
-                    }`}
-                  >
-                    {note}
-                  </span>
-                )}
-              </For>
-            </div>
+        <div class="flex items-stretch justify-between">
+          <div class="flex items-stretch gap-3">
+            {props.showExitButton && (
+              <button
+                onClick={props.onExit}
+                class="px-4 py-2 bg-gray-900 border border-gray-800 text-white rounded font-medium"
+                aria-label="Exit fullscreen"
+              >
+                Back
+              </button>
+            )}
+            {/* Play Progression Button */}
+            <button
+              onClick={handlePlayProgression}
+              class={`hflex items-center gap-1 px-4 py-2 rounded font-medium bg-yellow-600 text-yellow-50 border border-yellow-500`}
+              aria-label={getPlayButtonText()}
+            >
+              {playbackState.isPlaying ? <PauseIcon /> : <PlayIcon />}
+              <span>{playbackState.isPlaying ? "Pause" : "Start"}</span>
+            </button>
           </div>
-
           <div class="flex items-stretch gap-3">
             {/* Octaves Control */}
-            <div class="flex items-center gap-2 bg-gray-800 rounded px-3 py-1">
+            <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded px-3 py-1">
               <span class="text-gray-400 text-xs uppercase font-semibold mr-2">
                 Octaves
               </span>
@@ -102,26 +110,6 @@ export const ControlsBar: Component<ControlsBarProps> = (props) => {
                 <PlusIcon class="w-12px h-12px" />
               </button>
             </div>
-
-            {/* Play Progression Button */}
-            <button
-              onClick={handlePlayProgression}
-              class={`px-4 py-2 rounded font-medium bg-yellow-600 text-white`}
-              aria-label={getPlayButtonText()}
-            >
-              {playbackState.isPlaying ? <PauseIcon /> : <PlayIcon />}
-            </button>
-
-            {/* Exit Button (conditionally rendered) */}
-            {props.showExitButton && (
-              <button
-                onClick={props.onExit}
-                class="px-4 py-2 bg-red-600 text-white rounded font-medium"
-                aria-label="Exit fullscreen"
-              >
-                Exit
-              </button>
-            )}
           </div>
         </div>
       )}

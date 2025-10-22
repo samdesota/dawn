@@ -1,7 +1,7 @@
-import { createAtom } from '../../state/atom';
-import { chordProgressionState } from './ChordProgressionState';
-import { audioEngineState, NoteInfo } from './AudioEngineState';
-import * as Tone from 'tone';
+import { createAtom } from "../../state/atom";
+import { chordProgressionState } from "./ChordProgressionState";
+import { audioEngineState, NoteInfo } from "./AudioEngineState";
+import * as Tone from "tone";
 
 export interface RhythmPattern {
   name: string;
@@ -13,60 +13,200 @@ export interface RhythmPattern {
 export class ChordCompingState {
   // Reactive state atoms
   public isEnabled = createAtom(false);
-  public selectedRhythm = createAtom<string>('basic-quarter');
+  public selectedRhythm = createAtom<string>("basic-quarter");
   public volume = createAtom(0.6);
-  public voicing = createAtom<'close' | 'open' | 'rootless'>('close');
+  public voicing = createAtom<"close" | "open" | "rootless">("close");
 
   // Built-in rhythm patterns (16th note resolution)
   private readonly rhythmPatterns: RhythmPattern[] = [
     {
-      name: 'basic-quarter',
-      description: 'Quarter Notes',
-      pattern: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
-      velocity: [0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0]
+      name: "basic-quarter",
+      description: "Quarter Notes",
+      pattern: [
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+      ],
+      velocity: [0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0],
     },
     {
-      name: 'basic-half',
-      description: 'Half Notes',
-      pattern: [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false],
-      velocity: [0.9, 0, 0, 0, 0, 0, 0, 0, 0.9, 0, 0, 0, 0, 0, 0, 0]
+      name: "basic-half",
+      description: "Half Notes",
+      pattern: [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
+      velocity: [0.9, 0, 0, 0, 0, 0, 0, 0, 0.9, 0, 0, 0, 0, 0, 0, 0],
     },
     {
-      name: 'jazz-swing',
-      description: 'Jazz Swing',
-      pattern: [true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, false],
-      velocity: [0.8, 0, 0, 0.6, 0, 0, 0.7, 0, 0, 0.6, 0, 0, 0.8, 0, 0, 0]
+      name: "jazz-swing",
+      description: "Jazz Swing",
+      pattern: [
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+      ],
+      velocity: [0.8, 0, 0, 0.6, 0, 0, 0.7, 0, 0, 0.6, 0, 0, 0.8, 0, 0, 0],
     },
     {
-      name: 'latin-montuno',
-      description: 'Latin Montuno',
-      pattern: [true, false, true, false, false, true, false, true, true, false, true, false, false, true, false, true],
-      velocity: [0.8, 0, 0.6, 0, 0, 0.7, 0, 0.6, 0.8, 0, 0.6, 0, 0, 0.7, 0, 0.6]
+      name: "latin-montuno",
+      description: "Latin Montuno",
+      pattern: [
+        true,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        true,
+      ],
+      velocity: [
+        0.8, 0, 0.6, 0, 0, 0.7, 0, 0.6, 0.8, 0, 0.6, 0, 0, 0.7, 0, 0.6,
+      ],
     },
     {
-      name: 'reggae-skank',
-      description: 'Reggae Skank',
-      pattern: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false],
-      velocity: [0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0]
+      name: "reggae-skank",
+      description: "Reggae Skank",
+      pattern: [
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+      ],
+      velocity: [0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, 0],
     },
     {
-      name: 'funk-16th',
-      description: 'Funk 16th',
-      pattern: [true, false, true, true, false, true, false, true, true, false, true, true, false, true, false, true],
-      velocity: [0.9, 0, 0.6, 0.7, 0, 0.6, 0, 0.7, 0.9, 0, 0.6, 0.7, 0, 0.6, 0, 0.7]
+      name: "funk-16th",
+      description: "Funk 16th",
+      pattern: [
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        true,
+      ],
+      velocity: [
+        0.9, 0, 0.6, 0.7, 0, 0.6, 0, 0.7, 0.9, 0, 0.6, 0.7, 0, 0.6, 0, 0.7,
+      ],
     },
     {
-      name: 'ballad-whole',
-      description: 'Ballad Whole Notes',
-      pattern: [true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
-      velocity: [1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      name: "ballad-whole",
+      description: "Ballad Whole Notes",
+      pattern: [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
+      velocity: [1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
     {
-      name: 'bossa-nova',
-      description: 'Bossa Nova',
-      pattern: [true, false, false, true, false, true, false, false, true, false, false, true, false, true, false, false],
-      velocity: [0.7, 0, 0, 0.5, 0, 0.6, 0, 0, 0.7, 0, 0, 0.5, 0, 0.6, 0, 0]
-    }
+      name: "bossa-nova",
+      description: "Bossa Nova",
+      pattern: [
+        true,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+      ],
+      velocity: [0.7, 0, 0, 0.5, 0, 0.6, 0, 0, 0.7, 0, 0, 0.5, 0, 0.6, 0, 0],
+    },
   ];
 
   // Tone.Transport event ID for cleanup
@@ -89,6 +229,38 @@ export class ChordCompingState {
     this.stopComping();
   }
 
+  public pause() {
+    // Pause comping without resetting the step position
+    if (this.compingEventId !== null) {
+      Tone.getTransport().clear(this.compingEventId);
+      this.compingEventId = null;
+    }
+    // Stop chord notes but keep currentStep intact
+    audioEngineState.stopAllChordNotes();
+  }
+
+  public resume() {
+    // Resume comping from current step position
+    if (this.compingEventId !== null) {
+      return; // Already running
+    }
+
+    // Ensure audio context is ready
+    audioEngineState.resumeContext();
+
+    // Schedule repeating 16th note event without resetting currentStep
+    this.compingEventId = Tone.getTransport().scheduleRepeat((time) => {
+      this.onStep(time);
+    }, "16n"); // 16th note timing
+
+    // Start transport if not already running
+    if (Tone.getTransport().state !== "started") {
+      Tone.getTransport().start();
+    }
+
+    console.log("Chord comping resumed at step:", this.currentStep);
+  }
+
   public toggle() {
     if (this.isEnabled()) {
       this.disable();
@@ -98,7 +270,7 @@ export class ChordCompingState {
   }
 
   public setRhythm(rhythmName: string) {
-    const pattern = this.rhythmPatterns.find(p => p.name === rhythmName);
+    const pattern = this.rhythmPatterns.find((p) => p.name === rhythmName);
     if (pattern) {
       this.selectedRhythm.set(rhythmName);
 
@@ -114,7 +286,7 @@ export class ChordCompingState {
     this.volume.set(Math.max(0, Math.min(1, volume)));
   }
 
-  public setVoicing(voicing: 'close' | 'open' | 'rootless') {
+  public setVoicing(voicing: "close" | "open" | "rootless") {
     this.voicing.set(voicing);
   }
 
@@ -136,7 +308,10 @@ export class ChordCompingState {
       Tone.getTransport().start();
     }
 
-    console.log('Chord comping started with Tone.Transport at BPM:', Tone.getTransport().bpm.value);
+    console.log(
+      "Chord comping started with Tone.Transport at BPM:",
+      Tone.getTransport().bpm.value
+    );
   }
 
   private stopComping() {
@@ -172,7 +347,7 @@ export class ChordCompingState {
 
     // Calculate note duration based on rhythm pattern
     const bpm = chordProgressionState.tempoValue;
-    const sixteenthNoteDuration = (60 / bpm / 4); // Duration of one 16th note in seconds
+    const sixteenthNoteDuration = 60 / bpm / 4; // Duration of one 16th note in seconds
 
     // Set chord note duration - make it slightly longer than the beat to allow natural overlap
     const noteDuration = sixteenthNoteDuration * 4.2; // Slightly longer than a quarter note
@@ -181,7 +356,12 @@ export class ChordCompingState {
     const adjustedVelocity = velocity * this.volume();
 
     // Use scheduled time from Tone.Transport for precise timing
-    audioEngineState.playChord(chordNotes, adjustedVelocity, noteDuration, time);
+    audioEngineState.playChord(
+      chordNotes,
+      adjustedVelocity,
+      noteDuration,
+      time
+    );
   }
 
   private getChordVoicing(chordNotes: string[]): NoteInfo[] {
@@ -189,16 +369,16 @@ export class ChordCompingState {
     const octave = 4; // Middle octave
 
     switch (voicing) {
-      case 'close':
+      case "close":
         // Close voicing - all notes in same octave
         return chordNotes.map((note, index) => ({
           note,
           frequency: audioEngineState.noteToFrequency(note, octave),
           octave,
-          midiNumber: this.noteToMidi(note, octave)
+          midiNumber: this.noteToMidi(note, octave),
         }));
 
-      case 'open':
+      case "open":
         // Open voicing - spread notes across octaves
         return chordNotes.map((note, index) => {
           const noteOctave = octave + Math.floor(index / 2);
@@ -206,18 +386,18 @@ export class ChordCompingState {
             note,
             frequency: audioEngineState.noteToFrequency(note, noteOctave),
             octave: noteOctave,
-            midiNumber: this.noteToMidi(note, noteOctave)
+            midiNumber: this.noteToMidi(note, noteOctave),
           };
         });
 
-      case 'rootless':
+      case "rootless":
         // Rootless voicing - skip the root note
         const rootlessNotes = chordNotes.slice(1); // Remove first note (root)
         return rootlessNotes.map((note, index) => ({
           note,
           frequency: audioEngineState.noteToFrequency(note, octave),
           octave,
-          midiNumber: this.noteToMidi(note, octave)
+          midiNumber: this.noteToMidi(note, octave),
         }));
 
       default:
@@ -227,9 +407,23 @@ export class ChordCompingState {
 
   private noteToMidi(note: string, octave: number): number {
     const noteMap: { [key: string]: number } = {
-      'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4,
-      'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9,
-      'A#': 10, 'Bb': 10, 'B': 11
+      C: 0,
+      "C#": 1,
+      Db: 1,
+      D: 2,
+      "D#": 3,
+      Eb: 3,
+      E: 4,
+      F: 5,
+      "F#": 6,
+      Gb: 6,
+      G: 7,
+      "G#": 8,
+      Ab: 8,
+      A: 9,
+      "A#": 10,
+      Bb: 10,
+      B: 11,
     };
 
     const noteNumber = noteMap[note] || 0;
@@ -247,17 +441,19 @@ export class ChordCompingState {
 
   public getCurrentRhythmDescription(): string {
     const pattern = this.getCurrentPattern();
-    return pattern ? pattern.description : '';
+    return pattern ? pattern.description : "";
   }
 
   public getCurrentPattern(): RhythmPattern | null {
-    return this.rhythmPatterns.find(p => p.name === this.selectedRhythm()) || null;
+    return (
+      this.rhythmPatterns.find((p) => p.name === this.selectedRhythm()) || null
+    );
   }
 
   public syncWithTempo() {
     // Update Tone.Transport BPM
     Tone.getTransport().bpm.value = chordProgressionState.tempoValue;
-    
+
     // Restart comping with current tempo if enabled
     // Note: With Tone.Transport, tempo changes are handled automatically
     // but we may want to restart to reset the pattern phase
@@ -268,10 +464,18 @@ export class ChordCompingState {
   }
 
   // Reactive getters
-  get isEnabledValue() { return this.isEnabled(); }
-  get selectedRhythmValue() { return this.selectedRhythm(); }
-  get volumeValue() { return this.volume(); }
-  get voicingValue() { return this.voicing(); }
+  get isEnabledValue() {
+    return this.isEnabled();
+  }
+  get selectedRhythmValue() {
+    return this.selectedRhythm();
+  }
+  get volumeValue() {
+    return this.volume();
+  }
+  get voicingValue() {
+    return this.voicing();
+  }
 }
 
 // Export singleton instance

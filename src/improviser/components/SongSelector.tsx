@@ -1,8 +1,8 @@
-import { Component, For, createSignal } from 'solid-js';
-import { chordProgressionState } from '../state/ChordProgressionState';
-import { keyboardState } from '../state/KeyboardState';
-import { Key } from '@solid-primitives/keyed';
-import { useIsMobile } from '../../utils/deviceUtils';
+import { Component, For, createSignal } from "solid-js";
+import { chordProgressionState } from "../state/ChordProgressionState";
+import { keyboardState } from "../state/KeyboardState";
+import { Key } from "@solid-primitives/keyed";
+import { useIsMobile } from "../../utils/deviceUtils";
 
 export const SongSelector: Component = () => {
   const isMobile = useIsMobile();
@@ -40,7 +40,7 @@ export const SongSelector: Component = () => {
 
   const handleTouchMove = (e: TouchEvent) => {
     if (touchStart() === null) return;
-    
+
     const currentTouch = e.touches[0].clientX;
     const diff = currentTouch - touchStart()!;
     setTouchOffset(diff);
@@ -84,7 +84,7 @@ export const SongSelector: Component = () => {
   const getSongDisplayData = () => {
     const songs = getAvailableSongs();
     const currentIndex = getCurrentSongIndex();
-    const baseWidth = isMobile()? window.innerWidth * .7 : 256 ; // w-64 = 256px
+    const baseWidth = isMobile() ? window.innerWidth * 0.7 : 256; // w-64 = 256px
     const spacing = 32; // spacing between cards
 
     return songs.map((songName, index) => {
@@ -104,7 +104,11 @@ export const SongSelector: Component = () => {
           const prevScale = getScaleForDistance(dist);
           const nextScale = getScaleForDistance(dist + 1);
           // Add half of previous card width + spacing + half of next card width
-          xOffset += direction * ((baseWidth * prevScale / 2) + spacing + (baseWidth * nextScale / 2));
+          xOffset +=
+            direction *
+            ((baseWidth * prevScale) / 2 +
+              spacing +
+              (baseWidth * nextScale) / 2);
         }
       }
 
@@ -118,18 +122,19 @@ export const SongSelector: Component = () => {
         distance,
         position: index - currentIndex,
         xOffset,
-        scale
+        scale,
       };
     });
   };
 
-
   return (
     <div class="vflex flex-1">
-      <h2 class="text-xl font-semibold text-center m-4 text-white min-h-0 flex-shrink-0">Pick a song</h2>
+      <h2 class="text-xl font-semibold text-center m-4 text-white min-h-0 flex-shrink-0">
+        Pick a jam
+      </h2>
 
       {/* Cover Flow Container */}
-      <div 
+      <div
         class="vflex relative overflow-hidden flex-1"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -139,27 +144,37 @@ export const SongSelector: Component = () => {
           <Key each={getSongDisplayData()} by={(song) => song.name}>
             {(song) => (
               <div
-                class={`vflex flex-1 h-full absolute cursor-pointer ${isMobile() ? 'w-70vw' : 'w-64'}`}
+                class={`vflex flex-1 h-full absolute cursor-pointer ${
+                  isMobile() ? "w-70vw" : "w-64"
+                }`}
                 classList={{
-                  'transition-all duration-300': !isDragging(),
+                  "transition-all duration-300": !isDragging(),
                 }}
                 style={{
-                  transform: `translateX(${song().xOffset + touchOffset()}px) scale(${song().scale}) rotateY(${song().position * 15}deg)`,
-                  'z-index': song().isCurrent ? 10 : song().isAdjacent ? 5 : 1,
-                  opacity: song().isVisible ? (song().isCurrent ? 1 : song().isAdjacent ? 0.4 : 0.3) : 0,
-                  'pointer-events': song().isVisible ? 'auto' : 'none',
+                  transform: `translateX(${
+                    song().xOffset + touchOffset()
+                  }px) scale(${song().scale}) rotateY(${
+                    song().position * 15
+                  }deg)`,
+                  "z-index": song().isCurrent ? 10 : song().isAdjacent ? 5 : 1,
+                  opacity: song().isVisible
+                    ? song().isCurrent
+                      ? 1
+                      : song().isAdjacent
+                      ? 0.5
+                      : 0.3
+                    : 0,
+                  "pointer-events": song().isVisible ? "auto" : "none",
                 }}
                 onClick={() => !isDragging() && handleSongSelect(song().name)}
                 onMouseEnter={() => setHoveredSong(song.name)}
                 onMouseLeave={() => setHoveredSong(null)}
               >
                 <div
-                  class="vflex flex-1 rounded-lg p-4 shadow-lg transition-all duration-300 my-12"
+                  class="vflex flex-1 rounded-lg p-4 shadow-lg transition-all duration-300 my-12 border border-gray-700"
                   style="background-color: #1c1c1c;"
                   classList={{
-                    'ring-2 ring-yellow-500': song().isCurrent,
-                    'ring-1 ring-gray-500': song().isAdjacent && !song().isCurrent,
-                    'hover:ring-2 hover:ring-blue-400': hoveredSong() === song().name && !song().isCurrent
+                    "ring-2 ring-yellow-500": song().isCurrent,
                   }}
                 >
                   {/* Song Title */}
@@ -167,8 +182,8 @@ export const SongSelector: Component = () => {
                     <h3
                       class="font-bold text-lg truncate"
                       classList={{
-                          'text-yellow-400': song().isCurrent,
-                          'text-white': !song().isCurrent
+                        "text-yellow-400": song().isCurrent,
+                        "text-white": !song().isCurrent,
                       }}
                     >
                       {song().name}
@@ -176,25 +191,37 @@ export const SongSelector: Component = () => {
                   </div>
 
                   {/* Song Info */}
-                  <div class={`grid grid-cols-3 gap-2 ${isMobile() ? 'py-4' : 'my-auto'}`}>
+                  <div
+                    class={`grid grid-cols-3 gap-2 ${
+                      isMobile() ? "py-4" : "my-auto"
+                    }`}
+                  >
                     <div class="text-center">
                       <div class="text-gray-400 text-xs">Key</div>
-                      <div class="text-white font-medium">{song().info?.key}</div>
+                      <div class="text-white font-medium">
+                        {song().info?.key}
+                      </div>
                     </div>
                     <div class="text-center">
                       <div class="text-gray-400 text-xs">Tempo</div>
-                      <div class="text-white font-medium">{song().info?.defaultTempo}</div>
+                      <div class="text-white font-medium">
+                        {song().info?.defaultTempo}
+                      </div>
                     </div>
                     <div class="text-center">
                       <div class="text-gray-400 text-xs">Chords</div>
-                      <div class="text-white font-medium">{song().info?.chords?.length}</div>
+                      <div class="text-white font-medium">
+                        {song().info?.chords?.length}
+                      </div>
                     </div>
                   </div>
 
                   {/* Chord Progression - Mobile Only */}
                   {isMobile() && (
                     <div class="mt-6 pt-6 border-t border-gray-700">
-                      <div class="text-gray-400 text-sm text-center mb-4 font-medium">Chord Progression</div>
+                      <div class="text-gray-400 text-sm text-center mb-4 font-medium">
+                        Chord Progression
+                      </div>
                       <div class="grid grid-cols-4 gap-2 px-2">
                         <For each={song().info?.chords || []}>
                           {(chord) => (

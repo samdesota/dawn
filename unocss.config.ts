@@ -21,7 +21,7 @@ export default defineConfig({
         700: "#495057", // Darker gray
         800: "#404040", // Lighter gray (chromatic dark)
         850: "#333333", // Medium dark gray (scale dark)
-        900: "#2a2a2a", // Slightly lighter charcoal (pentatonic dark)
+        900: "#222222", // Slightly lighter charcoal (pentatonic dark)
         950: "#151515", // Dark charcoal (triad dark)
       },
     },
