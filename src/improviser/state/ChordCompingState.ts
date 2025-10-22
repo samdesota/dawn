@@ -16,6 +16,7 @@ export class ChordCompingState {
   public selectedRhythm = createAtom<string>("basic-quarter");
   public volume = createAtom(0.6);
   public voicing = createAtom<"close" | "open" | "rootless">("close");
+  public swingAmount = createAtom(0.5); // 0.5 = straight (50/50), 0.67 = triplet swing (67/33)
 
   // Built-in rhythm patterns (16th note resolution)
   private readonly rhythmPatterns: RhythmPattern[] = [
@@ -36,6 +37,29 @@ export class ChordCompingState {
         false,
         false,
         true,
+        false,
+        false,
+        false,
+      ],
+      velocity: [0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0],
+    },
+    {
+      name: "basic-whole",
+      description: "Whole Notes",
+      pattern: [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -215,6 +239,18 @@ export class ChordCompingState {
 
   constructor() {
     // Initialize with basic quarter note pattern
+
+    // Register callback to listen for song changes that include default settings
+    chordProgressionState.setCompingSettingsCallback(
+      (settings: { swing?: number; rhythm?: string }) => {
+        if (settings.swing !== undefined) {
+          this.setSwingAmount(settings.swing);
+        }
+        if (settings.rhythm !== undefined) {
+          this.setRhythm(settings.rhythm);
+        }
+      }
+    );
   }
 
   public enable() {
@@ -290,6 +326,11 @@ export class ChordCompingState {
     this.voicing.set(voicing);
   }
 
+  public setSwingAmount(amount: number) {
+    // Clamp between 0.5 (straight) and 0.75 (heavy swing)
+    this.swingAmount.set(Math.max(0.5, Math.min(0.75, amount)));
+  }
+
   private startComping() {
     this.stopComping(); // Clear any existing event
 
@@ -299,6 +340,7 @@ export class ChordCompingState {
     this.currentStep = 0;
 
     // Schedule repeating 16th note event
+    // We schedule at 16th notes but apply swing timing offset in onStep
     this.compingEventId = Tone.getTransport().scheduleRepeat((time) => {
       this.onStep(time);
     }, "16n"); // 16th note timing
@@ -310,7 +352,9 @@ export class ChordCompingState {
 
     console.log(
       "Chord comping started with Tone.Transport at BPM:",
-      Tone.getTransport().bpm.value
+      Tone.getTransport().bpm.value,
+      "Swing:",
+      this.swingAmount()
     );
   }
 
@@ -332,10 +376,35 @@ export class ChordCompingState {
     const velocity = pattern.velocity[stepIndex];
 
     if (shouldPlay && velocity > 0) {
-      this.playCurrentChord(velocity, time);
+      // Calculate swing timing offset
+      // Swing affects the off-beats (2nd and 4th of each pair of 8th notes)
+      const swingOffset = this.calculateSwingOffset(stepIndex);
+      this.playCurrentChord(velocity, time + swingOffset);
     }
 
     this.currentStep++;
+  }
+
+  private calculateSwingOffset(stepIndex: number): number {
+    // Only apply swing to off-beat 8th notes (steps 2, 6, 10, 14 in 16th note grid)
+    // These are the "and" beats in 8th note swing
+    const isOffBeatEighth = stepIndex % 4 === 2;
+
+    if (!isOffBeatEighth || this.swingAmount() === 0.5) {
+      return 0; // No offset for on-beats or when swing is off
+    }
+
+    const bpm = chordProgressionState.tempoValue;
+    const sixteenthNoteDuration = 60 / bpm / 4; // Duration of one 16th note in seconds
+
+    // Swing ratio determines how much to delay the off-beat
+    // 0.5 = straight (no delay)
+    // 0.67 = triplet swing (delay by 1/3 of an 8th note)
+    // The delay is: (swingAmount - 0.5) * 2 * sixteenthNoteDuration
+    // This shifts the off-beat later in time
+    const swingDelay = (this.swingAmount() - 0.5) * 2 * sixteenthNoteDuration;
+
+    return swingDelay;
   }
 
   private playCurrentChord(velocity: number, time: number) {
@@ -475,6 +544,9 @@ export class ChordCompingState {
   }
   get voicingValue() {
     return this.voicing();
+  }
+  get swingAmountValue() {
+    return this.swingAmount();
   }
 }
 

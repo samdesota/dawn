@@ -1,5 +1,5 @@
-import { Component, For } from 'solid-js';
-import { chordCompingState } from '../state/ChordCompingState';
+import { Component, For } from "solid-js";
+import { chordCompingState } from "../state/ChordCompingState";
 
 export const ChordCompingControls: Component = () => {
   const handleToggleComping = () => {
@@ -19,25 +19,36 @@ export const ChordCompingControls: Component = () => {
 
   const handleVoicingChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
-    chordCompingState.setVoicing(target.value as 'close' | 'open' | 'rootless');
+    chordCompingState.setVoicing(target.value as "close" | "open" | "rootless");
+  };
+
+  const handleSwingChange = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const swing = parseFloat(target.value);
+    chordCompingState.setSwingAmount(swing);
   };
 
   const getCompingButtonText = () => {
-    return chordCompingState.isEnabledValue ? 'Stop Comping' : 'Start Comping';
+    return chordCompingState.isEnabledValue ? "Stop Comping" : "Start Comping";
   };
 
   const getCompingButtonIcon = () => {
-    return chordCompingState.isEnabledValue ? '⏹️' : '🎹';
+    return chordCompingState.isEnabledValue ? "⏹️" : "🎹";
   };
 
   const getCurrentPattern = () => {
-    return chordCompingState.getAvailableRhythms().find(
-      p => p.name === chordCompingState.selectedRhythmValue
-    ) || null;
+    return (
+      chordCompingState
+        .getAvailableRhythms()
+        .find((p) => p.name === chordCompingState.selectedRhythmValue) || null
+    );
   };
 
   return (
-    <div class="chord-comping-controls text-white p-4 rounded-lg" style="background-color: #1c1c1c;">
+    <div
+      class="chord-comping-controls text-white p-4 rounded-lg"
+      style="background-color: #1c1c1c;"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Chord Comping</h3>
 
@@ -45,8 +56,8 @@ export const ChordCompingControls: Component = () => {
           onClick={handleToggleComping}
           class="comping-toggle px-4 py-2 rounded font-medium transition-colors"
           classList={{
-            'bg-green-600 hover:bg-green-500': chordCompingState.isEnabledValue,
-            'bg-blue-600 hover:bg-blue-500': !chordCompingState.isEnabledValue
+            "bg-green-600 hover:bg-green-500": chordCompingState.isEnabledValue,
+            "bg-blue-600 hover:bg-blue-500": !chordCompingState.isEnabledValue,
           }}
           aria-label={getCompingButtonText()}
         >
@@ -55,12 +66,10 @@ export const ChordCompingControls: Component = () => {
         </button>
       </div>
 
-      <div class="comping-settings grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="comping-settings grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Rhythm Pattern Selection */}
         <div class="rhythm-selection">
-          <label class="block text-sm font-medium mb-2">
-            Rhythm Pattern
-          </label>
+          <label class="block text-sm font-medium mb-2">Rhythm Pattern</label>
           <select
             value={chordCompingState.selectedRhythmValue}
             onChange={handleRhythmChange}
@@ -68,9 +77,7 @@ export const ChordCompingControls: Component = () => {
           >
             <For each={chordCompingState.getAvailableRhythms()}>
               {(rhythm) => (
-                <option value={rhythm.name}>
-                  {rhythm.description}
-                </option>
+                <option value={rhythm.name}>{rhythm.description}</option>
               )}
             </For>
           </select>
@@ -102,9 +109,7 @@ export const ChordCompingControls: Component = () => {
 
         {/* Voicing Selection */}
         <div class="voicing-selection">
-          <label class="block text-sm font-medium mb-2">
-            Chord Voicing
-          </label>
+          <label class="block text-sm font-medium mb-2">Chord Voicing</label>
           <select
             value={chordCompingState.voicingValue}
             onChange={handleVoicingChange}
@@ -118,6 +123,27 @@ export const ChordCompingControls: Component = () => {
             Changes chord note arrangement
           </div>
         </div>
+
+        {/* Swing Control */}
+        <div class="swing-control">
+          <label class="block text-sm font-medium mb-2">
+            Swing Feel: {Math.round(chordCompingState.swingAmountValue * 100)}%
+          </label>
+          <input
+            type="range"
+            min="0.5"
+            max="0.75"
+            step="0.01"
+            value={chordCompingState.swingAmountValue}
+            onInput={handleSwingChange}
+            class="swing-slider w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+          />
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>Straight</span>
+            <span>Swing</span>
+            <span>Heavy</span>
+          </div>
+        </div>
       </div>
 
       {/* Rhythm Pattern Visualization */}
@@ -129,11 +155,11 @@ export const ChordCompingControls: Component = () => {
               <div
                 class="pattern-step w-3 h-6 rounded-sm"
                 classList={{
-                  'bg-yellow-500': hit,
-                  'bg-gray-600': !hit,
-                  'border-2 border-white': index() % 4 === 0 // Beat markers
+                  "bg-yellow-500": hit,
+                  "bg-gray-600": !hit,
+                  "border-2 border-white": index() % 4 === 0, // Beat markers
                 }}
-                title={`Step ${index() + 1}: ${hit ? 'Hit' : 'Rest'}`}
+                title={`Step ${index() + 1}: ${hit ? "Hit" : "Rest"}`}
               />
             )}
           </For>
@@ -149,7 +175,8 @@ export const ChordCompingControls: Component = () => {
           <div class="flex items-center space-x-2">
             <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span class="text-sm text-green-400">
-              Comping active with {chordCompingState.getCurrentRhythmDescription()}
+              Comping active with{" "}
+              {chordCompingState.getCurrentRhythmDescription()}
             </span>
           </div>
         </div>

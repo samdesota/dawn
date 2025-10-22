@@ -8,7 +8,15 @@ export interface NoteInfo {
   midiNumber: number;
 }
 
-export type InstrumentType = "piano" | "electric-piano" | "synthesizer";
+export type InstrumentType =
+  | "piano"
+  | "electric-piano"
+  | "synthesizer"
+  | "warm-pad"
+  | "bright-keys"
+  | "jazz-organ"
+  | "soft-rhodes"
+  | "mellow-pad";
 export type NoteContext = "keyboard" | "chord" | "general";
 
 export class AudioEngineState {
@@ -21,6 +29,11 @@ export class AudioEngineState {
   private reverb: Tone.Reverb | null = null;
   private compressor: Tone.Compressor | null = null;
   private masterVolume: Tone.Volume | null = null;
+
+  // Individual volume controls for each context
+  private keyboardVolume: Tone.Volume | null = null;
+  private chordVolume: Tone.Volume | null = null;
+  private generalVolume: Tone.Volume | null = null;
 
   // Track active notes for declarative management
   private activeKeyboardNotes = new Map<
@@ -35,12 +48,34 @@ export class AudioEngineState {
 
   // Reactive state atoms
   public volume = createAtom(0.5);
-  public instrument = createAtom<InstrumentType>("piano");
+  public instrument = createAtom<InstrumentType>("piano"); // Legacy - now use keyboardInstrument
+  public keyboardInstrument = createAtom<InstrumentType>("piano");
+  public chordInstrument = createAtom<InstrumentType>("warm-pad");
   public reverbMix = createAtom(0.3);
   public isInitialized = createAtom(false);
 
   constructor() {
     this.initializeAudio();
+    this.setupCallbacks();
+  }
+
+  private setupCallbacks() {
+    // This will be called after imports are resolved
+    // We'll import chordProgressionState dynamically to avoid circular dependency
+    setTimeout(() => {
+      import("./ChordProgressionState").then(({ chordProgressionState }) => {
+        chordProgressionState.setInstrumentChangeCallback((settings) => {
+          if (settings.keyboardInstrument) {
+            this.setKeyboardInstrument(
+              settings.keyboardInstrument as InstrumentType
+            );
+          }
+          if (settings.chordInstrument) {
+            this.setChordInstrument(settings.chordInstrument as InstrumentType);
+          }
+        });
+      });
+    }, 0);
   }
 
   private async initializeAudio() {
@@ -62,20 +97,32 @@ export class AudioEngineState {
 
       this.masterVolume = new Tone.Volume(Tone.gainToDb(this.volume()));
 
-      // Connect effects chain: reverb -> compressor -> volume -> destination
+      // Create individual volume controls for each context
+      this.keyboardVolume = new Tone.Volume(0);
+      this.chordVolume = new Tone.Volume(0);
+      this.generalVolume = new Tone.Volume(0);
+
+      // Connect effects chain: reverb -> compressor -> master volume -> destination
       this.reverb.connect(this.compressor);
       this.compressor.connect(this.masterVolume);
       this.masterVolume.toDestination();
 
       // Create instruments for different contexts
-      this.keyboardSynth = this.createSynthForInstrument(this.instrument());
-      this.chordSynth = this.createSynthForInstrument(this.instrument());
+      this.keyboardSynth = this.createSynthForInstrument(
+        this.keyboardInstrument()
+      );
+      this.chordSynth = this.createSynthForInstrument(this.chordInstrument());
       this.generalSynth = this.createSynthForInstrument(this.instrument());
 
-      // Connect all synths to reverb (which connects to the chain)
-      this.keyboardSynth.connect(this.reverb);
-      this.chordSynth.connect(this.reverb);
-      this.generalSynth.connect(this.reverb);
+      // Connect synths through their individual volume controls, then to reverb
+      this.keyboardSynth.connect(this.keyboardVolume);
+      this.keyboardVolume.connect(this.reverb);
+
+      this.chordSynth.connect(this.chordVolume);
+      this.chordVolume.connect(this.reverb);
+
+      this.generalSynth.connect(this.generalVolume);
+      this.generalVolume.connect(this.reverb);
 
       console.log("Tone.js audio engine initialized successfully");
       console.log("Audio context state:", Tone.getContext().state);
@@ -119,16 +166,18 @@ export class AudioEngineState {
         });
 
       case "electric-piano":
-        // AM synthesis for electric piano character
-        return new Tone.PolySynth(Tone.AMSynth, {
+        return new Tone.PolySynth(Tone.FMSynth, {
           harmonicity: 2,
+          oscillator: {
+            type: "sine",
+          },
           envelope: {
             ...envelope,
             decay: 0.2,
-            sustain: 0.3,
+            sustain: 0.1,
           },
           modulation: {
-            type: "square",
+            type: "triangle",
           },
           modulationEnvelope: {
             attack: 0.01,
@@ -150,7 +199,97 @@ export class AudioEngineState {
             decay: 0.2,
             sustain: 0.5,
           },
+          volume: -8,
+        });
+
+      case "warm-pad":
+        // Warm pad sound with multiple oscillators
+        return new Tone.PolySynth(Tone.Synth, {
+          oscillator: {
+            type: "triangle8",
+          },
+          envelope: {
+            attack: 0.3,
+            decay: 0.2,
+            sustain: 0.8,
+            release: 1.5,
+          },
+          volume: -10,
+        });
+
+      case "bright-keys":
+        // Bright, bell-like keys
+        return new Tone.PolySynth(Tone.FMSynth, {
+          harmonicity: 8,
+          modulationIndex: 12,
+          envelope: {
+            attack: 0.01,
+            decay: 0.2,
+            sustain: 0.1,
+            release: 0.3,
+          },
+          modulation: {
+            type: "sine",
+          },
+          modulationEnvelope: {
+            attack: 0.01,
+            decay: 0.3,
+            sustain: 0.1,
+            release: 0.2,
+          },
           volume: -6,
+        });
+
+      case "jazz-organ":
+        // Jazz organ with drawbar-like sound
+        return new Tone.PolySynth(Tone.Synth, {
+          oscillator: {
+            type: "sine6",
+          },
+          envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.9,
+            release: 0.2,
+          },
+          volume: -8,
+        });
+
+      case "soft-rhodes":
+        // Soft Rhodes electric piano
+        return new Tone.PolySynth(Tone.AMSynth, {
+          harmonicity: 3,
+          envelope: {
+            attack: 0.02,
+            decay: 0.3,
+            sustain: 0.4,
+            release: 0.8,
+          },
+          modulation: {
+            type: "sine",
+          },
+          modulationEnvelope: {
+            attack: 0.02,
+            decay: 0.4,
+            sustain: 0.3,
+            release: 0.5,
+          },
+          volume: -8,
+        });
+
+      case "mellow-pad":
+        // Mellow, sustained pad
+        return new Tone.PolySynth(Tone.Synth, {
+          oscillator: {
+            type: "sine",
+          },
+          envelope: {
+            attack: 0.5,
+            decay: 0.3,
+            sustain: 0.3,
+            release: 0.8,
+          },
+          volume: -8,
         });
 
       default:
@@ -557,9 +696,58 @@ export class AudioEngineState {
 
   public setInstrument(instrument: InstrumentType) {
     this.instrument.set(instrument);
+    this.keyboardInstrument.set(instrument); // Also update keyboard by default
 
     // Stop all notes before switching instruments
     this.emergencyStopAll();
+  }
+
+  public setKeyboardInstrument(instrument: InstrumentType) {
+    this.keyboardInstrument.set(instrument);
+
+    // Recreate keyboard synth
+    this.stopAllKeyboardNotes();
+    this.keyboardSynth?.dispose();
+    this.keyboardSynth = this.createSynthForInstrument(instrument);
+
+    // Reconnect through volume control to reverb
+    if (this.keyboardVolume && this.reverb) {
+      this.keyboardSynth.connect(this.keyboardVolume);
+      this.keyboardVolume.connect(this.reverb);
+    }
+
+    console.log("Keyboard instrument changed to:", instrument);
+  }
+
+  public setChordInstrument(instrument: InstrumentType) {
+    this.chordInstrument.set(instrument);
+
+    // Recreate chord synth
+    this.stopAllChordNotes();
+    this.chordSynth?.dispose();
+    this.chordSynth = this.createSynthForInstrument(instrument);
+
+    // Reconnect through volume control to reverb
+    if (this.chordVolume && this.reverb) {
+      this.chordSynth.connect(this.chordVolume);
+      this.chordVolume.connect(this.reverb);
+    }
+
+    console.log("Chord instrument changed to:", instrument);
+  }
+
+  public setChordSynthVolume(volumeDb: number) {
+    if (this.chordVolume) {
+      this.chordVolume.volume.value = volumeDb;
+      console.log("Chord synth volume set to:", volumeDb, "dB");
+    }
+  }
+
+  public setKeyboardSynthVolume(volumeDb: number) {
+    if (this.keyboardVolume) {
+      this.keyboardVolume.volume.value = volumeDb;
+      console.log("Keyboard synth volume set to:", volumeDb, "dB");
+    }
   }
 
   public setReverbMix(mix: number) {
@@ -666,6 +854,12 @@ export class AudioEngineState {
   }
   get currentInstrument() {
     return this.instrument();
+  }
+  get currentKeyboardInstrument() {
+    return this.keyboardInstrument();
+  }
+  get currentChordInstrument() {
+    return this.chordInstrument();
   }
   get currentReverbMix() {
     return this.reverbMix();
